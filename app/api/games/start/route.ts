@@ -54,25 +54,22 @@ export async function POST(req: NextRequest) {
       crewmates_won: false,
     });
 
-    // Get user phone numbers for SMS
-    const { data: usersData } = await supabase
-      .from('users')
-      .select('id, phone_number')
-      .in(
-        'id',
-        playersData.map((p) => p.user_id)
+    // Send SMS notifications to all players
+    try {
+      const smsResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/sms/send-roles`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gameId }),
+        }
       );
 
-    // Send SMS notifications (Twilio integration would go here)
-    if (usersData) {
-      for (const user of usersData) {
-        const player = playersData.find((p) => p.user_id === user.id);
-        if (player) {
-          const role = player.user_id === imposterUserId ? 'Imposter' : 'Crewmate';
-          console.log(`Sending SMS to ${user.phone_number}: Your role is ${role}`);
-          // TODO: Implement actual Twilio SMS sending
-        }
+      if (!smsResponse.ok) {
+        console.warn('Failed to send SMS notifications:', await smsResponse.text());
       }
+    } catch (smsError) {
+      console.warn('Error calling SMS endpoint:', smsError);
     }
 
     return NextResponse.json({
