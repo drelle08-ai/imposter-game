@@ -90,9 +90,9 @@ export default function GameLobbyPage() {
         )
         .eq('game_id', gameData.id);
 
-      setPlayers(playersData || []);
+      setPlayers((playersData as any) || []);
 
-      const isAlreadyJoined = playersData?.some((p: Player) => p.user_id === session.user.id);
+      const isAlreadyJoined = (playersData as any)?.some((p: any) => p.user_id === session.user.id);
       setIsJoined(!!isAlreadyJoined);
 
       setLoading(false);
@@ -147,7 +147,7 @@ export default function GameLobbyPage() {
       )
       .eq('game_id', game.id);
 
-    setPlayers(playersData || []);
+    setPlayers((playersData as any) || []);
   };
 
   const handleStartGame = async () => {

@@ -109,9 +109,9 @@ export default function GamePlayPage() {
         )
         .eq('game_id', gameData.id);
 
-      setPlayers(playersData || []);
+      setPlayers((playersData as any) || []);
 
-      const currentPlayer = playersData?.find((p: Player) => p.user_id === session.user.id);
+      const currentPlayer = (playersData as any)?.find((p: any) => p.user_id === session.user.id);
       setCurrentPlayerData(currentPlayer || null);
 
       setLoading(false);
