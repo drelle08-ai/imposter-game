@@ -46,11 +46,13 @@ export type Database = {
         Row: {
           id: string;
           game_id: string;
-          user_id: string;
+          user_id: string | null;
           role: 'imposter' | 'crewmate' | 'unassigned';
           is_alive: boolean;
           voted_for_user_id: string | null;
           joined_at: string;
+          guest_name: string | null;
+          guest_phone: string | null;
         };
       };
       game_rounds: {

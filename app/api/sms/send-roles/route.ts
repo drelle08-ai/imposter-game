@@ -46,17 +46,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No players found' }, { status: 404 });
     }
 
+    // Get game code for join link
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('invite_code')
+      .eq('id', gameId)
+      .single();
+
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const gameCode = gameData?.invite_code;
+
     // Send SMS to each player
     const smsResults = [];
 
     for (const player of playersData) {
-      const phoneNumber = (player.users as any)?.phone_number;
-      const username = (player.users as any)?.username;
+      const isGuest = (player as any).guest_phone && (player as any).guest_name;
+      const phoneNumber = isGuest ? (player as any).guest_phone : (player.users as any)?.phone_number;
+      const name = isGuest ? (player as any).guest_name : (player.users as any)?.username;
       const role = player.role;
 
       if (!phoneNumber) {
         smsResults.push({
-          userId: player.user_id,
+          playerId: player.id,
+          name,
           status: 'skipped',
           reason: 'No phone number',
         });
@@ -64,23 +76,26 @@ export async function POST(req: NextRequest) {
       }
 
       try {
+        const joinLink = `${baseUrl}/games/${gameCode}${isGuest ? '?guest=true&phone=' + encodeURIComponent(phoneNumber) : ''}`;
+        const roleEmoji = role === 'imposter' ? '🔴 IMPOSTER' : '🔵 CREWMATE';
+
         const message = await client.messages.create({
-          body: `🎮 Imposter Game Started!\n\nYour role: ${role === 'imposter' ? '🔴 IMPOSTER' : '🔵 CREWMATE'}\n\nGood luck!`,
+          body: `🎮 Imposter Game Started!\n\nYour role: ${roleEmoji}\n\nJoin: ${joinLink}`,
           from: twilioPhoneNumber,
           to: phoneNumber,
         });
 
         smsResults.push({
-          userId: player.user_id,
-          username,
+          playerId: player.id,
+          name,
           role,
           status: 'sent',
           messageSid: message.sid,
         });
       } catch (error) {
         smsResults.push({
-          userId: player.user_id,
-          username,
+          playerId: player.id,
+          name,
           status: 'failed',
           error: String(error),
         });

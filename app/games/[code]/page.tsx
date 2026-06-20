@@ -41,6 +41,9 @@ export default function GameLobbyPage() {
   const [isHost, setIsHost] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
   const [error, setError] = useState('');
+  const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guests, setGuests] = useState<Array<{ name: string; phone: string }>>([]);
 
   useEffect(() => {
     const loadGame = async () => {
@@ -150,6 +153,49 @@ export default function GameLobbyPage() {
     setPlayers((playersData as any) || []);
   };
 
+  const handleAddGuest = async () => {
+    if (!game || !guestName.trim() || !guestPhone.trim()) {
+      setError('Please enter guest name and phone number');
+      return;
+    }
+
+    const { error } = await supabase.from('game_players').insert({
+      game_id: game.id,
+      guest_name: guestName,
+      guest_phone: guestPhone,
+      role: 'unassigned',
+      is_alive: true,
+    });
+
+    if (error) {
+      setError('Failed to add guest: ' + error.message);
+      return;
+    }
+
+    setGuests([...guests, { name: guestName, phone: guestPhone }]);
+    setGuestName('');
+    setGuestPhone('');
+
+    // Reload players
+    const { data: playersData } = await supabase
+      .from('game_players')
+      .select(
+        `
+        id,
+        user_id,
+        role,
+        is_alive,
+        joined_at,
+        guest_name,
+        guest_phone,
+        users(username)
+      `
+      )
+      .eq('game_id', game.id);
+
+    setPlayers((playersData as any) || []);
+  };
+
   const handleStartGame = async () => {
     if (!game) return;
 
@@ -250,6 +296,35 @@ export default function GameLobbyPage() {
           )}
         </div>
 
+        {/* Guest Management (Host Only) */}
+        {isHost && isJoined && (
+          <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">Add Guests</h3>
+            <div className="space-y-3 mb-4">
+              <input
+                type="text"
+                placeholder="Guest name"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="tel"
+                placeholder="Phone number (e.g., +14075551234)"
+                value={guestPhone}
+                onChange={(e) => setGuestPhone(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleAddGuest}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition"
+              >
+                Add Guest
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Players Card */}
         <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
           <h3 className="text-2xl font-bold text-gray-800 mb-4">
@@ -265,11 +340,16 @@ export default function GameLobbyPage() {
                   className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
                 >
                   <span className="font-semibold text-gray-800">
-                    {player.users?.username}
+                    {(player as any).guest_name || player.users?.username}
                     {currentUser?.id === player.user_id && ' (You)'}
                     {game.host_id === player.user_id && (
                       <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
                         Host
+                      </span>
+                    )}
+                    {(player as any).guest_name && (
+                      <span className="ml-2 bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                        Guest
                       </span>
                     )}
                   </span>
