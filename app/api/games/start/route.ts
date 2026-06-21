@@ -35,11 +35,11 @@ export async function POST(req: NextRequest) {
 
     // Randomly assign imposter
     const randomIndex = Math.floor(Math.random() * playersData.length);
-    const imposterUserId = playersData[randomIndex].user_id;
+    const imposterPlayerId = playersData[randomIndex].id;
 
     // Update roles
     const updatePromises = playersData.map((player) => {
-      const role = player.user_id === imposterUserId ? 'imposter' : 'crewmate';
+      const role = player.id === imposterPlayerId ? 'imposter' : 'crewmate';
       return supabase.from('game_players').update({ role }).eq('id', player.id);
     });
 
