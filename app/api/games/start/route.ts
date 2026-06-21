@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Send SMS notifications to all players
+    let smsResults = null;
     try {
       const smsResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/sms/send-roles`,
@@ -66,7 +67,11 @@ export async function POST(req: NextRequest) {
       );
 
       if (!smsResponse.ok) {
-        console.warn('Failed to send SMS notifications:', await smsResponse.text());
+        const errorText = await smsResponse.text();
+        console.warn('Failed to send SMS notifications:', errorText);
+      } else {
+        smsResults = await smsResponse.json();
+        console.log('SMS Results:', smsResults);
       }
     } catch (smsError) {
       console.warn('Error calling SMS endpoint:', smsError);
@@ -75,6 +80,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Game started successfully',
+      smsResults,
     });
   } catch (error) {
     console.error('Error starting game:', error);

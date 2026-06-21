@@ -78,12 +78,17 @@ export async function POST(req: NextRequest) {
       try {
         const joinLink = `${baseUrl}/games/${gameCode}${isGuest ? '?guest=true&phone=' + encodeURIComponent(phoneNumber) : ''}`;
         const roleEmoji = role === 'imposter' ? '🔴 IMPOSTER' : '🔵 CREWMATE';
+        const messageBody = `🎮 Imposter Game Started!\n\nYour role: ${roleEmoji}\n\nJoin: ${joinLink}`;
+
+        console.log(`Sending SMS to ${phoneNumber}:`, messageBody);
 
         const message = await client.messages.create({
-          body: `🎮 Imposter Game Started!\n\nYour role: ${roleEmoji}\n\nJoin: ${joinLink}`,
+          body: messageBody,
           from: twilioPhoneNumber,
           to: phoneNumber,
         });
+
+        console.log(`SMS sent successfully to ${phoneNumber}. SID: ${message.sid}`);
 
         smsResults.push({
           playerId: player.id,
@@ -91,13 +96,18 @@ export async function POST(req: NextRequest) {
           role,
           status: 'sent',
           messageSid: message.sid,
+          phoneNumber,
         });
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`Failed to send SMS to ${phoneNumber}:`, errorMsg);
+
         smsResults.push({
           playerId: player.id,
           name,
           status: 'failed',
-          error: String(error),
+          error: errorMsg,
+          phoneNumber,
         });
       }
     }
