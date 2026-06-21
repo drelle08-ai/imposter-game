@@ -50,6 +50,8 @@ export default function GamePlayPage() {
   const [error, setError] = useState('');
   const [voteTimer, setVoteTimer] = useState(30);
   const [hasVoted, setHasVoted] = useState(false);
+  const [phaseTimer, setPhaseTimer] = useState(30);
+  const [isAdvancingPhase, setIsAdvancingPhase] = useState(false);
 
   useEffect(() => {
     const loadGame = async () => {
@@ -152,6 +154,51 @@ export default function GamePlayPage() {
     return () => clearInterval(timer);
   }, [currentRound?.phase]);
 
+  useEffect(() => {
+    if (!currentRound || !game) return;
+
+    const phaseDurations: Record<string, number> = {
+      discussion: 30,
+      voting: 30,
+      results: 10,
+    };
+
+    const duration = phaseDurations[currentRound.phase] || 30;
+
+    const timer = setInterval(() => {
+      setPhaseTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Auto-advance phase
+          advancePhase();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Set initial timer
+    setPhaseTimer(duration);
+
+    return () => clearInterval(timer);
+  }, [currentRound?.phase, game?.id]);
+
+  const advancePhase = async () => {
+    if (isAdvancingPhase || !game) return;
+    setIsAdvancingPhase(true);
+
+    try {
+      await fetch('/api/games/advance-phase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId: game.id }),
+      });
+    } catch (err) {
+      console.error('Failed to advance phase:', err);
+    }
+    setIsAdvancingPhase(false);
+  };
+
   const handleVote = async (votedUserId: string) => {
     if (!currentPlayerData || !game) return;
 
@@ -234,16 +281,17 @@ export default function GamePlayPage() {
               <h2 className="text-2xl font-bold text-gray-800 mb-2 capitalize">
                 {currentRound.phase} Phase
               </h2>
-              {currentRound.phase === 'voting' && (
-                <p className="text-lg text-gray-600">
-                  Time remaining: <span className="font-bold">{voteTimer}s</span>
-                </p>
-              )}
+              <p className="text-lg text-gray-600 mb-2">
+                Time remaining: <span className="font-bold text-blue-600">{phaseTimer}s</span>
+              </p>
               {currentRound.phase === 'discussion' && (
-                <p className="text-gray-600">Discuss with your team!</p>
+                <p className="text-sm text-gray-500">Discuss with your team!</p>
+              )}
+              {currentRound.phase === 'voting' && (
+                <p className="text-sm text-gray-500">Vote to eliminate a player</p>
               )}
               {currentRound.phase === 'results' && (
-                <p className="text-gray-600">Round results</p>
+                <p className="text-sm text-gray-500">Reviewing round results...</p>
               )}
             </div>
           </div>
