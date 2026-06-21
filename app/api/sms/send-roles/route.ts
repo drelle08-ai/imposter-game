@@ -7,6 +7,49 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
+const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || '';
+const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER || '';
+
+async function sendSmsViaTwilio(toNumber: string, message: string): Promise<{ success: boolean; sid?: string; error?: string }> {
+  if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+    return { success: false, error: 'Twilio credentials not configured' };
+  }
+
+  try {
+    const auth = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64');
+
+    const formData = new URLSearchParams();
+    formData.append('From', twilioPhoneNumber);
+    formData.append('To', toNumber);
+    formData.append('Body', message);
+
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok && (data as any).sid) {
+      console.log(`[SMS] Sent to ${toNumber}: ${(data as any).sid}`);
+      return { success: true, sid: (data as any).sid };
+    } else {
+      console.error(`[SMS] Failed to send to ${toNumber}:`, data);
+      return { success: false, error: (data as any).message || 'Unknown error' };
+    }
+  } catch (error) {
+    console.error(`[SMS] Error sending to ${toNumber}:`, error);
+    return { success: false, error: String(error) };
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,25 +101,30 @@ export async function POST(req: NextRequest) {
       const roleEmoji = role === 'imposter' ? '🔴 IMPOSTER' : '🔵 CREWMATE';
       const messageBody = `🎮 Imposter Game Started!\n\nYour role: ${roleEmoji}\n\nJoin: ${joinLink}`;
 
-      console.log(`[SMS] Test Mode - Would send to ${phoneNumber}`);
+      // Send SMS via Twilio
+      const smsResult = await sendSmsViaTwilio(phoneNumber, messageBody);
 
       smsResults.push({
         playerId: player.id,
         name,
         role,
         phoneNumber,
-        status: 'test_mode',
+        status: smsResult.success ? 'sent' : 'failed',
         message: messageBody,
+        sid: smsResult.sid,
+        error: smsResult.error,
       });
     }
 
-    console.log(`[SMS] Generated ${smsResults.length} SMS messages in test mode`);
+    const sentCount = smsResults.filter((r) => r.status === 'sent').length;
+    console.log(`[SMS] Sent ${sentCount}/${smsResults.length} SMS messages`);
 
     return NextResponse.json({
       status: 'complete',
-      mode: 'test',
+      mode: 'twilio',
       smsResults,
       totalGenerated: smsResults.length,
+      totalSent: sentCount,
     });
   } catch (error) {
     console.error('[SMS] Error:', error);
