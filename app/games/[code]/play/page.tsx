@@ -104,6 +104,8 @@ export default function GamePlayPage() {
           role,
           is_alive,
           voted_for_user_id,
+          guest_name,
+          guest_phone,
           users(username)
         `
         )
@@ -265,7 +267,7 @@ export default function GamePlayPage() {
                         : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
                     }`}
                   >
-                    {player.users?.username}
+                    {(player as any).guest_name || player.users?.username}
                     {currentPlayerData?.voted_for_user_id === player.user_id && ' ✓'}
                   </button>
                 ))}
@@ -292,7 +294,7 @@ export default function GamePlayPage() {
                       player.is_alive ? 'text-green-800' : 'text-red-800'
                     }`}
                   >
-                    {player.users?.username}
+                    {(player as any).guest_name || player.users?.username}
                     {currentUser?.id === player.user_id && ' (You)'}
                   </span>
                   {player.role !== 'unassigned' && currentRound?.phase === 'results' && (

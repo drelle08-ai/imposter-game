@@ -88,6 +88,8 @@ export default function GameLobbyPage() {
           role,
           is_alive,
           joined_at,
+          guest_name,
+          guest_phone,
           users(username)
         `
         )
