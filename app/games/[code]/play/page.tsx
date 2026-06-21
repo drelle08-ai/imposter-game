@@ -88,15 +88,14 @@ export default function GamePlayPage() {
         .from('game_rounds')
         .select('*')
         .eq('game_id', gameData.id)
-        .eq('round_number', gameData.current_round)
-        .single();
+        .eq('round_number', gameData.current_round);
 
       if (roundError) {
         console.error('Error loading round:', roundError);
       }
 
-      if (roundData) {
-        setCurrentRound(roundData);
+      if (roundData && roundData.length > 0) {
+        setCurrentRound(roundData[0]);
       } else if (!roundError) {
         console.warn('No round data found, this may be a new game');
       }
