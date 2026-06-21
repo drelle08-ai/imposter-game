@@ -12,7 +12,21 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-const client = twilio(accountSid, authToken);
+// Log Twilio config on startup
+console.log('Twilio Config:', {
+  hasAccountSid: !!accountSid,
+  hasAuthToken: !!authToken,
+  hasPhoneNumber: !!twilioPhoneNumber,
+  phoneNumber: twilioPhoneNumber,
+});
+
+let client: any = null;
+if (accountSid && authToken) {
+  client = twilio(accountSid, authToken);
+  console.log('Twilio client initialized successfully');
+} else {
+  console.warn('Twilio credentials missing, SMS will not work');
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,8 +37,27 @@ export async function POST(req: NextRequest) {
     }
 
     if (!accountSid || !authToken || !twilioPhoneNumber) {
+      console.error('Twilio credentials missing:', {
+        accountSid: !!accountSid,
+        authToken: !!authToken,
+        twilioPhoneNumber: !!twilioPhoneNumber,
+      });
       return NextResponse.json(
-        { error: 'Twilio credentials not configured' },
+        {
+          error: 'Twilio credentials not configured',
+          details: {
+            hasAccountSid: !!accountSid,
+            hasAuthToken: !!authToken,
+            hasPhoneNumber: !!twilioPhoneNumber,
+          }
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!client) {
+      return NextResponse.json(
+        { error: 'Twilio client not initialized' },
         { status: 500 }
       );
     }
@@ -119,9 +152,19 @@ export async function POST(req: NextRequest) {
       totalFailed: smsResults.filter((r) => r.status === 'failed').length,
     });
   } catch (error) {
-    console.error('Error sending SMS:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('Error in SMS endpoint:', {
+      message: errorMessage,
+      stack: errorStack,
+      error,
+    });
     return NextResponse.json(
-      { error: 'Failed to send SMS notifications', details: String(error) },
+      {
+        error: 'Failed to send SMS notifications',
+        details: errorMessage,
+        stack: errorStack,
+      },
       { status: 500 }
     );
   }
