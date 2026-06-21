@@ -19,9 +19,12 @@ async function sendSmsViaTwilio(toNumber: string, message: string): Promise<{ su
   try {
     const auth = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64');
 
+    // Format phone number: ensure it has +1 country code
+    const formattedNumber = toNumber.startsWith('+') ? toNumber : `+1${toNumber}`;
+
     const formData = new URLSearchParams();
     formData.append('From', twilioPhoneNumber);
-    formData.append('To', toNumber);
+    formData.append('To', formattedNumber);
     formData.append('Body', message);
 
     const response = await fetch(
