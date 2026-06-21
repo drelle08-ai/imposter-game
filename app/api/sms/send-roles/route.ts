@@ -1,31 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import twilio from 'twilio';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-
-// Log Twilio config on startup
-console.log('Twilio Config:', {
-  hasAccountSid: !!accountSid,
-  hasAuthToken: !!authToken,
-  hasPhoneNumber: !!twilioPhoneNumber,
-  phoneNumber: twilioPhoneNumber,
-});
-
-let client: any = null;
-if (accountSid && authToken) {
-  client = twilio(accountSid, authToken);
-  console.log('Twilio client initialized successfully');
-} else {
-  console.warn('Twilio credentials missing, SMS will not work');
-}
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,32 +14,6 @@ export async function POST(req: NextRequest) {
 
     if (!gameId) {
       return NextResponse.json({ error: 'Game ID is required' }, { status: 400 });
-    }
-
-    if (!accountSid || !authToken || !twilioPhoneNumber) {
-      console.error('Twilio credentials missing:', {
-        accountSid: !!accountSid,
-        authToken: !!authToken,
-        twilioPhoneNumber: !!twilioPhoneNumber,
-      });
-      return NextResponse.json(
-        {
-          error: 'Twilio credentials not configured',
-          details: {
-            hasAccountSid: !!accountSid,
-            hasAuthToken: !!authToken,
-            hasPhoneNumber: !!twilioPhoneNumber,
-          }
-        },
-        { status: 500 }
-      );
-    }
-
-    if (!client) {
-      return NextResponse.json(
-        { error: 'Twilio client not initialized' },
-        { status: 500 }
-      );
     }
 
     // Get all players in the game with their phone numbers and roles
@@ -69,6 +24,8 @@ export async function POST(req: NextRequest) {
         id,
         user_id,
         role,
+        guest_name,
+        guest_phone,
         users(phone_number, username)
       `
       )
@@ -85,10 +42,9 @@ export async function POST(req: NextRequest) {
       .eq('id', gameId)
       .single();
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     const gameCode = gameData?.invite_code;
 
-    // Send SMS to each player
+    // Generate SMS messages for each player (test mode - not actually sending)
     const smsResults = [];
 
     for (const player of playersData) {
@@ -107,62 +63,40 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      try {
-        const joinLink = `${baseUrl}/games/${gameCode}${isGuest ? '?guest=true&phone=' + encodeURIComponent(phoneNumber) : ''}`;
-        const roleEmoji = role === 'imposter' ? '🔴 IMPOSTER' : '🔵 CREWMATE';
-        const messageBody = `🎮 Imposter Game Started!\n\nYour role: ${roleEmoji}\n\nJoin: ${joinLink}`;
+      const joinLink = `${baseUrl}/games/${gameCode}${isGuest ? '?guest=true&phone=' + encodeURIComponent(phoneNumber) : ''}`;
+      const roleEmoji = role === 'imposter' ? '🔴 IMPOSTER' : '🔵 CREWMATE';
+      const messageBody = `🎮 Imposter Game Started!\n\nYour role: ${roleEmoji}\n\nJoin: ${joinLink}`;
 
-        console.log(`Sending SMS to ${phoneNumber}:`, messageBody);
+      console.log(`[SMS TEST MODE] Would send to ${phoneNumber}:`, messageBody);
 
-        const message = await client.messages.create({
-          body: messageBody,
-          from: twilioPhoneNumber,
-          to: phoneNumber,
-        });
-
-        console.log(`SMS sent successfully to ${phoneNumber}. SID: ${message.sid}`);
-
-        smsResults.push({
-          playerId: player.id,
-          name,
-          role,
-          status: 'sent',
-          messageSid: message.sid,
-          phoneNumber,
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error(`Failed to send SMS to ${phoneNumber}:`, errorMsg);
-
-        smsResults.push({
-          playerId: player.id,
-          name,
-          status: 'failed',
-          error: errorMsg,
-          phoneNumber,
-        });
-      }
+      smsResults.push({
+        playerId: player.id,
+        name,
+        role,
+        phoneNumber,
+        status: 'test_mode',
+        message: messageBody,
+      });
     }
+
+    console.log(`[SMS] Generated ${smsResults.length} messages (test mode)`);
 
     return NextResponse.json({
       status: 'complete',
+      mode: 'test',
+      message: 'SMS in test mode - messages shown below but not actually sent',
       results: smsResults,
-      totalSent: smsResults.filter((r) => r.status === 'sent').length,
-      totalFailed: smsResults.filter((r) => r.status === 'failed').length,
+      totalGenerated: smsResults.length,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : '';
-    console.error('Error in SMS endpoint:', {
-      message: errorMessage,
-      stack: errorStack,
-      error,
-    });
+    console.error('Error in SMS endpoint:', { message: errorMessage, stack: errorStack });
+
     return NextResponse.json(
       {
-        error: 'Failed to send SMS notifications',
+        error: 'Failed to process SMS',
         details: errorMessage,
-        stack: errorStack,
       },
       { status: 500 }
     );
