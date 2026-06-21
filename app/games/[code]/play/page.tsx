@@ -48,9 +48,7 @@ export default function GamePlayPage() {
   const [currentPlayerData, setCurrentPlayerData] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [voteTimer, setVoteTimer] = useState(30);
   const [hasVoted, setHasVoted] = useState(false);
-  const [phaseTimer, setPhaseTimer] = useState(30);
   const [isAdvancingPhase, setIsAdvancingPhase] = useState(false);
 
   useEffect(() => {
@@ -138,50 +136,6 @@ export default function GamePlayPage() {
     };
   }, [code, router]);
 
-  useEffect(() => {
-    if (currentRound?.phase !== 'voting') return;
-
-    const timer = setInterval(() => {
-      setVoteTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [currentRound?.phase]);
-
-  useEffect(() => {
-    if (!currentRound || !game) return;
-
-    const phaseDurations: Record<string, number> = {
-      discussion: 30,
-      voting: 30,
-      results: 10,
-    };
-
-    const duration = phaseDurations[currentRound.phase] || 30;
-
-    const timer = setInterval(() => {
-      setPhaseTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Auto-advance phase
-          advancePhase();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Set initial timer
-    setPhaseTimer(duration);
-
-    return () => clearInterval(timer);
-  }, [currentRound?.phase, game?.id]);
 
   const advancePhase = async () => {
     if (isAdvancingPhase || !game) return;
@@ -274,25 +228,29 @@ export default function GamePlayPage() {
           </div>
         )}
 
-        {/* Phase and Timer */}
+        {/* Phase Control */}
         {currentRound && (
           <div className="bg-white rounded-lg shadow-xl p-6 mb-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2 capitalize">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4 capitalize">
                 {currentRound.phase} Phase
               </h2>
-              <p className="text-lg text-gray-600 mb-2">
-                Time remaining: <span className="font-bold text-blue-600">{phaseTimer}s</span>
-              </p>
               {currentRound.phase === 'discussion' && (
-                <p className="text-sm text-gray-500">Discuss with your team!</p>
+                <p className="text-gray-600 mb-4">Discuss with your team!</p>
               )}
               {currentRound.phase === 'voting' && (
-                <p className="text-sm text-gray-500">Vote to eliminate a player</p>
+                <p className="text-gray-600 mb-4">Vote to eliminate a player</p>
               )}
               {currentRound.phase === 'results' && (
-                <p className="text-sm text-gray-500">Reviewing round results...</p>
+                <p className="text-gray-600 mb-4">Reviewing round results...</p>
               )}
+              <button
+                onClick={advancePhase}
+                disabled={isAdvancingPhase}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition"
+              >
+                {isAdvancingPhase ? 'Advancing...' : 'Next Phase'}
+              </button>
             </div>
           </div>
         )}
