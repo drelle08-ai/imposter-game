@@ -47,16 +47,24 @@ export async function POST(req: NextRequest) {
     await Promise.all(updatePromises);
 
     // Create first round with keyword
-    const roundData: any = {
+    const keyword = getRandomKeyword();
+    console.log(`[Game Start] Creating round with keyword: ${keyword}`);
+
+    const { error: roundError } = await supabase.from('game_rounds').insert({
       game_id: gameId,
       round_number: 1,
       phase: 'discussion',
       imposter_eliminated: false,
       crewmates_won: false,
-      keyword: getRandomKeyword(),
-    };
+      keyword: keyword,
+    });
 
-    await supabase.from('game_rounds').insert(roundData);
+    if (roundError) {
+      console.error('[Game Start] Error creating round:', roundError);
+      return NextResponse.json({ error: 'Failed to create round: ' + roundError.message }, { status: 500 });
+    }
+
+    console.log('[Game Start] Round created successfully with keyword:', keyword);
 
     // Send SMS notifications to all players
     let smsResults = null;
