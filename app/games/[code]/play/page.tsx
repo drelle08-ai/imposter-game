@@ -235,29 +235,9 @@ export default function GamePlayPage() {
 
         {/* Keyword Card */}
         {currentRound?.keyword && (
-          <div
-            className={`mb-6 rounded-lg shadow-xl p-6 text-center text-white ${
-              currentPlayerData?.role === 'imposter' && !game?.give_hints_to_imposter
-                ? 'bg-gray-600'
-                : 'bg-green-600'
-            }`}
-          >
-            {currentPlayerData?.role === 'crewmate' ? (
-              <>
-                <p className="text-sm mb-2">Secret Keyword</p>
-                <p className="text-3xl font-bold">{currentRound.keyword}</p>
-              </>
-            ) : currentPlayerData?.role === 'imposter' && game?.give_hints_to_imposter ? (
-              <>
-                <p className="text-sm mb-2">Guess the Keyword (with hints)</p>
-                <p className="text-3xl font-bold">{currentRound.keyword}</p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm mb-2">Keyword</p>
-                <p className="text-lg">Hidden - Guess if you can!</p>
-              </>
-            )}
+          <div className="mb-6 rounded-lg shadow-xl p-6 text-center text-white bg-green-600">
+            <p className="text-sm mb-2">Secret Keyword</p>
+            <p className="text-3xl font-bold">{currentRound.keyword}</p>
           </div>
         )}
 

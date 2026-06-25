@@ -42,10 +42,7 @@ export default function GameLobbyPage() {
   const [isJoined, setIsJoined] = useState(false);
   const [error, setError] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
-  const [guests, setGuests] = useState<Array<{ name: string; phone: string }>>([]);
-  const [useKeyword, setUseKeyword] = useState(false);
-  const [giveHints, setGiveHints] = useState(false);;
+  const [guestPhone, setGuestPhone] = useState('');;
 
   useEffect(() => {
     const loadGame = async () => {
@@ -79,8 +76,6 @@ export default function GameLobbyPage() {
       }
 
       setGame(gameData);
-      setUseKeyword(gameData.use_keyword || false);
-      setGiveHints(gameData.give_hints_to_imposter || false);
       setIsHost(gameData.host_id === session.user.id);
 
       const { data: playersData } = await supabase
@@ -200,27 +195,6 @@ export default function GameLobbyPage() {
       .eq('game_id', game.id);
 
     setPlayers((playersData as any) || []);
-  };
-
-  const handleUpdateSettings = async (newUseKeyword: boolean, newGiveHints: boolean) => {
-    if (!game) return;
-
-    try {
-      await fetch('/api/games/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gameId: game.id,
-          use_keyword: newUseKeyword,
-          give_hints_to_imposter: newGiveHints,
-        }),
-      });
-
-      setUseKeyword(newUseKeyword);
-      setGiveHints(newGiveHints);
-    } catch (err) {
-      console.error('Failed to update settings:', err);
-    }
   };
 
   const handleStartGame = async () => {
@@ -392,34 +366,6 @@ export default function GameLobbyPage() {
         {/* Host Controls */}
         {isHost && isJoined && (
           <div className="bg-white rounded-lg shadow-xl p-8">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Game Settings</h3>
-
-            <div className="space-y-4 mb-6">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useKeyword}
-                  onChange={(e) => handleUpdateSettings(e.target.checked, giveHints)}
-                  className="w-5 h-5 text-blue-600 rounded"
-                />
-                <span className="ml-3 text-gray-700 font-semibold">Enable Secret Keyword</span>
-                <span className="ml-2 text-sm text-gray-500">(Crewmates see keyword, Imposter guesses)</span>
-              </label>
-
-              {useKeyword && (
-                <label className="flex items-center cursor-pointer ml-6">
-                  <input
-                    type="checkbox"
-                    checked={giveHints}
-                    onChange={(e) => handleUpdateSettings(useKeyword, e.target.checked)}
-                    className="w-5 h-5 text-blue-600 rounded"
-                  />
-                  <span className="ml-3 text-gray-700 font-semibold">Give Hints to Imposter</span>
-                  <span className="ml-2 text-sm text-gray-500">(Show keyword with hints)</span>
-                </label>
-              )}
-            </div>
-
             <button
               onClick={handleStartGame}
               disabled={players.length < 3}

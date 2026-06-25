@@ -46,18 +46,15 @@ export async function POST(req: NextRequest) {
 
     await Promise.all(updatePromises);
 
-    // Create first round with optional keyword
+    // Create first round with keyword
     const roundData: any = {
       game_id: gameId,
       round_number: 1,
       phase: 'discussion',
       imposter_eliminated: false,
       crewmates_won: false,
+      keyword: getRandomKeyword(),
     };
-
-    if (gameData.use_keyword) {
-      roundData.keyword = getRandomKeyword();
-    }
 
     await supabase.from('game_rounds').insert(roundData);
 
