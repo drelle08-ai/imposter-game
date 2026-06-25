@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getRandomKeyword } from '@/lib/keywords';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
           phase: 'discussion',
           imposter_eliminated: false,
           crewmates_won: false,
+          keyword: getRandomKeyword(),
         })
         .select()
         .single();
