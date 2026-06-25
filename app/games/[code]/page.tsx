@@ -42,7 +42,8 @@ export default function GameLobbyPage() {
   const [isJoined, setIsJoined] = useState(false);
   const [error, setError] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');;
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guests, setGuests] = useState<Array<{ name: string; phone: string }>>([]);;
 
   useEffect(() => {
     const loadGame = async () => {
