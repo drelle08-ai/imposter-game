@@ -38,6 +38,8 @@ export type Database = {
           invite_code: string;
           max_players: number;
           current_round: number;
+          use_keyword: boolean;
+          give_hints_to_imposter: boolean;
           created_at: string;
           started_at: string | null;
         };
@@ -63,6 +65,7 @@ export type Database = {
           phase: 'discussion' | 'voting' | 'results';
           imposter_eliminated: boolean;
           crewmates_won: boolean;
+          keyword: string | null;
           ended_at: string | null;
         };
       };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getRandomKeyword } from '@/lib/keywords';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -45,14 +46,20 @@ export async function POST(req: NextRequest) {
 
     await Promise.all(updatePromises);
 
-    // Create first round
-    await supabase.from('game_rounds').insert({
+    // Create first round with optional keyword
+    const roundData: any = {
       game_id: gameId,
       round_number: 1,
       phase: 'discussion',
       imposter_eliminated: false,
       crewmates_won: false,
-    });
+    };
+
+    if (gameData.use_keyword) {
+      roundData.keyword = getRandomKeyword();
+    }
+
+    await supabase.from('game_rounds').insert(roundData);
 
     // Send SMS notifications to all players
     let smsResults = null;
