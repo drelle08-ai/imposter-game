@@ -55,20 +55,26 @@ export async function POST(req: NextRequest) {
       const playerCount = playersData.length;
       const mafiaCount = Math.max(1, Math.floor(playerCount / 4));
 
-      // Shuffle players to randomly assign roles
-      const shuffled = [...playersData].sort(() => Math.random() - 0.5);
+      // Create array of roles to distribute
+      const roles: string[] = [];
+      for (let i = 0; i < mafiaCount; i++) {
+        roles.push('mafia');
+      }
+      roles.push('doctor');
+      roles.push('sheriff');
+      while (roles.length < playerCount) {
+        roles.push('civilian');
+      }
 
-      updatePromises = shuffled.map((player, index) => {
-        let role = 'civilian';
-        if (index < mafiaCount) {
-          role = 'mafia';
-        } else if (index === mafiaCount) {
-          role = 'doctor';
-        } else if (index === mafiaCount + 1) {
-          role = 'sheriff';
-        }
+      // Fisher-Yates shuffle for truly random assignment
+      for (let i = roles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [roles[i], roles[j]] = [roles[j], roles[i]];
+      }
 
-        return supabase.from('game_players').update({ role }).eq('id', player.id);
+      // Assign shuffled roles to players
+      updatePromises = playersData.map((player, index) => {
+        return supabase.from('game_players').update({ role: roles[index] }).eq('id', player.id);
       });
 
       // Create first round (night phase for mafia)

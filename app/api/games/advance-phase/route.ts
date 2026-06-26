@@ -128,8 +128,16 @@ async function advanceMafiaPhase(
         .eq('id', eliminatedPlayerId);
     }
 
-    // Check win conditions
-    const alivePlayers = players.filter((p) => p.is_alive);
+    // Reload players to get updated alive status
+    const { data: updatedPlayers } = await supabase
+      .from('game_players')
+      .select('*')
+      .eq('game_id', gameId);
+
+    const playersList = updatedPlayers || players;
+
+    // Check win conditions with updated player data
+    const alivePlayers = playersList.filter((p) => p.is_alive);
     const aliveMafia = alivePlayers.filter((p) => p.role === 'mafia');
     const aliveCivilians = alivePlayers.filter((p) => p.role !== 'mafia');
 
