@@ -296,7 +296,7 @@ export default function MafiaPlayPage() {
         <div className="bg-white rounded-lg shadow-xl p-6">
           <h3 className="text-xl font-bold text-gray-800 mb-4">
             {currentRound?.phase === 'night' && currentPlayerData?.role !== 'civilian'
-              ? `Select Target (${currentPlayerData.role.toUpperCase()})`
+              ? `Select Target (${currentPlayerData?.role.toUpperCase()})`
               : currentRound?.phase === 'day'
                 ? 'Vote to Eliminate'
                 : 'Players'}
