@@ -9,15 +9,15 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(req: NextRequest) {
   try {
-    const { gameId, maxRounds } = await req.json();
+    const { gameId, maxRounds, gameType = 'imposter' } = await req.json();
 
     if (!gameId) {
       return NextResponse.json({ error: 'Game ID is required' }, { status: 400 });
     }
 
     // Update game with max_rounds
-    const roundsToSet = maxRounds || 3; // Default to 3 if not provided
-    console.log(`[Game Start] Setting max_rounds to ${roundsToSet}`);
+    const roundsToSet = maxRounds || (gameType === 'mafia' ? 5 : 3);
+    console.log(`[Game Start] Setting max_rounds to ${roundsToSet} for ${gameType} game`);
 
     const { error: updateError } = await supabase
       .from('games')
@@ -47,37 +47,77 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 });
     }
 
-    // Randomly assign imposter
-    const randomIndex = Math.floor(Math.random() * playersData.length);
-    const imposterPlayerId = playersData[randomIndex].id;
+    // Assign roles based on game type
+    let updatePromises;
 
-    // Update roles
-    const updatePromises = playersData.map((player) => {
-      const role = player.id === imposterPlayerId ? 'imposter' : 'crewmate';
-      return supabase.from('game_players').update({ role }).eq('id', player.id);
-    });
+    if (gameType === 'mafia') {
+      // Mafia role assignment: 1 mafia per 4 players, 1 doctor, 1 sheriff, rest civilian
+      const playerCount = playersData.length;
+      const mafiaCount = Math.max(1, Math.floor(playerCount / 4));
 
-    await Promise.all(updatePromises);
+      // Shuffle players to randomly assign roles
+      const shuffled = [...playersData].sort(() => Math.random() - 0.5);
 
-    // Create first round with keyword
-    const keyword = getRandomKeyword();
-    console.log(`[Game Start] Creating round with keyword: ${keyword}`);
+      updatePromises = shuffled.map((player, index) => {
+        let role = 'civilian';
+        if (index < mafiaCount) {
+          role = 'mafia';
+        } else if (index === mafiaCount) {
+          role = 'doctor';
+        } else if (index === mafiaCount + 1) {
+          role = 'sheriff';
+        }
 
-    const { error: roundError } = await supabase.from('game_rounds').insert({
-      game_id: gameId,
-      round_number: 1,
-      phase: 'discussion',
-      imposter_eliminated: false,
-      crewmates_won: false,
-      keyword: keyword,
-    });
+        return supabase.from('game_players').update({ role }).eq('id', player.id);
+      });
 
-    if (roundError) {
-      console.error('[Game Start] Error creating round:', roundError);
-      return NextResponse.json({ error: 'Failed to create round: ' + roundError.message }, { status: 500 });
+      // Create first round (night phase for mafia)
+      const { error: roundError } = await supabase.from('game_rounds').insert({
+        game_id: gameId,
+        round_number: 1,
+        phase: 'night',
+        imposter_eliminated: false,
+        crewmates_won: false,
+      });
+
+      if (roundError) {
+        console.error('[Game Start] Error creating round:', roundError);
+        return NextResponse.json({ error: 'Failed to create round: ' + roundError.message }, { status: 500 });
+      }
+
+      console.log(`[Game Start] Mafia game initialized: ${mafiaCount} mafia, 1 doctor, 1 sheriff, ${playerCount - mafiaCount - 2} civilians`);
+    } else {
+      // Imposter role assignment
+      const randomIndex = Math.floor(Math.random() * playersData.length);
+      const imposterPlayerId = playersData[randomIndex].id;
+
+      updatePromises = playersData.map((player) => {
+        const role = player.id === imposterPlayerId ? 'imposter' : 'crewmate';
+        return supabase.from('game_players').update({ role }).eq('id', player.id);
+      });
+
+      // Create first round with keyword
+      const keyword = getRandomKeyword();
+      console.log(`[Game Start] Creating Imposter round with keyword: ${keyword}`);
+
+      const { error: roundError } = await supabase.from('game_rounds').insert({
+        game_id: gameId,
+        round_number: 1,
+        phase: 'discussion',
+        imposter_eliminated: false,
+        crewmates_won: false,
+        keyword: keyword,
+      });
+
+      if (roundError) {
+        console.error('[Game Start] Error creating round:', roundError);
+        return NextResponse.json({ error: 'Failed to create round: ' + roundError.message }, { status: 500 });
+      }
+
+      console.log('[Game Start] Imposter round created successfully with keyword:', keyword);
     }
 
-    console.log('[Game Start] Round created successfully with keyword:', keyword);
+    await Promise.all(updatePromises);
 
     // Send SMS notifications to all players
     let smsResults = null;

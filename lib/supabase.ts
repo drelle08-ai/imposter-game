@@ -63,10 +63,14 @@ export type Database = {
           id: string;
           game_id: string;
           round_number: number;
-          phase: 'discussion' | 'voting' | 'results';
+          phase: 'discussion' | 'voting' | 'results' | 'night' | 'day';
           imposter_eliminated: boolean;
           crewmates_won: boolean;
           keyword: string | null;
+          mafia_killed_player: string | null;
+          doctor_saved_player: string | null;
+          sheriff_investigated_player: string | null;
+          investigation_result: boolean | null;
           ended_at: string | null;
         };
       };
