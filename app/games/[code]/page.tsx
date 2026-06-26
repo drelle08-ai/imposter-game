@@ -77,6 +77,12 @@ export default function GameLobbyPage() {
         return;
       }
 
+      // Redirect to correct lobby based on game type
+      if (gameData.game_type === 'mafia') {
+        router.push(`/games/${code}/mafia`);
+        return;
+      }
+
       setGame(gameData);
       setIsHost(gameData.host_id === session.user.id);
 
