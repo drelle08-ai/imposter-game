@@ -118,54 +118,54 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-[#d4af37] text-xl" style={{fontFamily: 'Crimson Text', fontSize: '1.5em'}}>Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-600">
+    <div className="min-h-screen bg-black">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-12 pb-8 border-b-2 border-[#d4af37]">
           <div>
-            <h1 className="text-4xl font-bold text-white">Imposter</h1>
-            <p className="text-blue-100">Welcome, {user?.username}!</p>
+            <h1 className="text-5xl font-bold text-[#d4af37]" style={{fontFamily: 'Playfair Display'}}>🎭 THE GAME</h1>
+            <p className="text-[#b8860b] mt-2" style={{fontFamily: 'Crimson Text', fontSize: '1.2em'}}>Welcome back, {user?.username}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition"
+            className="bg-red-900 hover:bg-red-800 text-[#d4af37] font-bold py-2 px-6 border border-[#d4af37] rounded transition transform hover:scale-105"
           >
-            Logout
+            Exit
           </button>
         </div>
 
         {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* Create Game Card */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Create Game</h2>
-            <p className="text-gray-600 mb-4">Select a game type and invite your friends</p>
+          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8">
+            <h2 className="text-3xl font-bold text-[#d4af37] mb-4" style={{fontFamily: 'Playfair Display'}}>Create Operation</h2>
+            <p className="text-[#888] mb-6" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>Select a game and begin</p>
 
             {/* Game Type Selection */}
             <div className="flex gap-3 mb-6">
               <button
                 onClick={() => setSelectedGameType('imposter')}
-                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+                className={`flex-1 py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
                   selectedGameType === 'imposter'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                    ? 'bg-[#d4af37] text-black'
+                    : 'bg-[#3a3a3a] text-[#d4af37] border border-[#d4af37]'
                 }`}
               >
                 🕵️ Imposter
               </button>
               <button
                 onClick={() => setSelectedGameType('mafia')}
-                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+                className={`flex-1 py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
                   selectedGameType === 'mafia'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                    ? 'bg-[#d4af37] text-black'
+                    : 'bg-[#3a3a3a] text-[#d4af37] border border-[#d4af37]'
                 }`}
               >
                 🎭 Mafia
@@ -174,16 +174,16 @@ export default function DashboardPage() {
 
             <button
               onClick={handleCreateGame}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition text-lg"
+              className="w-full bg-[#d4af37] hover:bg-[#f0d966] text-black font-bold py-3 rounded transition transform hover:scale-105"
             >
-              Create New Game
+              Create
             </button>
           </div>
 
           {/* Join Game Card */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Join Game</h2>
-            <p className="text-gray-600 mb-4">Enter the 6-character invite code from your friend</p>
+          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8">
+            <h2 className="text-3xl font-bold text-[#d4af37] mb-4" style={{fontFamily: 'Playfair Display'}}>Join Operation</h2>
+            <p className="text-[#888] mb-6" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>Enter the operation code</p>
             <form onSubmit={handleJoinGame} className="space-y-3">
               <input
                 type="text"
@@ -191,14 +191,14 @@ export default function DashboardPage() {
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="e.g., ABC123"
                 maxLength={6}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg font-mono"
+                className="w-full px-4 py-3 bg-[#3a3a3a] border-2 border-[#d4af37] text-[#d4af37] rounded focus:outline-none focus:ring-2 focus:ring-[#f0d966] text-center text-lg font-mono"
               />
               <button
                 type="submit"
                 disabled={joiningGame || joinCode.length !== 6}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-2 rounded-lg transition"
+                className="w-full bg-[#d4af37] hover:bg-[#f0d966] disabled:bg-gray-600 text-black font-bold py-3 rounded transition transform hover:scale-105"
               >
-                {joiningGame ? 'Joining...' : 'Join Game'}
+                {joiningGame ? 'Joining...' : 'Join'}
               </button>
             </form>
           </div>
@@ -206,23 +206,23 @@ export default function DashboardPage() {
 
         {/* Games History */}
         {games.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Your Games</h2>
+          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8">
+            <h2 className="text-3xl font-bold text-[#d4af37] mb-6" style={{fontFamily: 'Playfair Display'}}>Your Operations</h2>
             <div className="space-y-3">
               {games.map((game) => (
                 <Link
                   key={game.id}
                   href={`/games/${game.invite_code}`}
-                  className="block p-4 border border-gray-200 rounded-lg hover:bg-blue-50 transition cursor-pointer"
+                  className="block p-4 border border-[#d4af37] rounded hover:bg-[#3a3a3a] transition cursor-pointer transform hover:scale-102"
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="font-semibold text-gray-800">Code: {game.invite_code}</p>
-                      <p className="text-sm text-gray-600 capitalize">
-                        Status: {game.status} • Created: {new Date(game.created_at).toLocaleDateString()}
+                      <p className="font-semibold text-[#d4af37]">Code: {game.invite_code}</p>
+                      <p className="text-sm text-[#888] capitalize">
+                        {game.status} • {new Date(game.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                    <span className="bg-[#d4af37] text-black px-3 py-1 rounded-full text-sm font-medium">
                       {game.game_type}
                     </span>
                   </div>
