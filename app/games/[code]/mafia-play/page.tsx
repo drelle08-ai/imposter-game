@@ -53,6 +53,9 @@ export default function MafiaPlayPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isAdvancingPhase, setIsAdvancingPhase] = useState(false);
+  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  const [actionSubmitted, setActionSubmitted] = useState(false);
+  const [voteSubmitted, setVoteSubmitted] = useState(false);
 
   useEffect(() => {
     const loadGame = async () => {
@@ -126,6 +129,51 @@ export default function MafiaPlayPage() {
       subscription.unsubscribe();
     };
   }, [code, router]);
+
+  const submitNightAction = async (targetId: string) => {
+    if (!currentRound || !currentPlayerData || !game) return;
+
+    try {
+      const actionType = currentPlayerData.role === 'mafia' ? 'kill' :
+                         currentPlayerData.role === 'doctor' ? 'save' :
+                         currentPlayerData.role === 'sheriff' ? 'investigate' : null;
+
+      if (!actionType) return;
+
+      await fetch('/api/games/night-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: game.id,
+          roundId: currentRound.id,
+          playerId: currentPlayerData.id,
+          targetId,
+          actionType,
+        }),
+      });
+
+      setActionSubmitted(true);
+      setSelectedTarget(null);
+    } catch (err) {
+      console.error('Failed to submit night action:', err);
+    }
+  };
+
+  const submitVote = async (targetId: string) => {
+    if (!game || !currentPlayerData) return;
+
+    try {
+      await supabase
+        .from('game_players')
+        .update({ voted_for_user_id: targetId })
+        .eq('id', currentPlayerData.id);
+
+      setVoteSubmitted(true);
+      setSelectedTarget(targetId);
+    } catch (err) {
+      console.error('Failed to submit vote:', err);
+    }
+  };
 
   const advancePhase = async () => {
     if (isAdvancingPhase || !game) return;
@@ -244,34 +292,79 @@ export default function MafiaPlayPage() {
           </div>
         )}
 
-        {/* Players List */}
+        {/* Players List / Night Actions / Day Voting */}
         <div className="bg-white rounded-lg shadow-xl p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Players</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">
+            {currentRound?.phase === 'night' && currentPlayerData?.role !== 'civilian'
+              ? `Select Target (${currentPlayerData.role.toUpperCase()})`
+              : currentRound?.phase === 'day'
+                ? 'Vote to Eliminate'
+                : 'Players'}
+          </h3>
+          {actionSubmitted && currentRound?.phase === 'night' && (
+            <div className="bg-green-100 text-green-800 p-3 rounded-lg mb-4 text-center font-semibold">
+              ✓ Action submitted! Waiting for night to end...
+            </div>
+          )}
+          {voteSubmitted && currentRound?.phase === 'day' && (
+            <div className="bg-green-100 text-green-800 p-3 rounded-lg mb-4 text-center font-semibold">
+              ✓ Vote submitted!
+            </div>
+          )}
           <div className="space-y-2">
-            {players.map((player) => (
-              <div
-                key={player.id}
-                className={`flex items-center justify-between p-3 rounded-lg ${
-                  player.is_alive
-                    ? 'bg-green-50 border border-green-200'
-                    : 'bg-red-50 border border-red-200'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`font-semibold ${
-                      player.is_alive ? 'text-green-800' : 'text-red-800'
-                    }`}
-                  >
-                    {player.guest_name || player.users?.username}
-                    {currentUser?.id === player.user_id && ' (You)'}
+            {players.map((player) => {
+              const isNightPhase = currentRound?.phase === 'night';
+              const isDayPhase = currentRound?.phase === 'day';
+
+              const canTargetNight =
+                player.is_alive &&
+                isNightPhase &&
+                currentPlayerData?.role !== 'civilian' &&
+                player.id !== currentPlayerData?.id;
+
+              const canVote =
+                player.is_alive &&
+                isDayPhase &&
+                player.id !== currentPlayerData?.id;
+
+              const canInteract = canTargetNight || canVote;
+
+              return (
+                <button
+                  key={player.id}
+                  onClick={() => {
+                    if (canTargetNight) submitNightAction(player.id);
+                    if (canVote) submitVote(player.id);
+                  }}
+                  disabled={!canInteract}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg transition ${
+                    selectedTarget === player.id
+                      ? 'ring-2 ring-yellow-400 bg-yellow-50'
+                      : canInteract
+                        ? 'hover:bg-gray-100 cursor-pointer'
+                        : ''
+                  } ${
+                    player.is_alive
+                      ? 'bg-green-50 border border-green-200'
+                      : 'bg-red-50 border border-red-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`font-semibold ${
+                        player.is_alive ? 'text-green-800' : 'text-red-800'
+                      }`}
+                    >
+                      {player.guest_name || player.users?.username}
+                      {currentUser?.id === player.user_id && ' (You)'}
+                    </span>
+                  </div>
+                  <span className={player.is_alive ? 'text-green-600' : 'text-red-600'}>
+                    {player.is_alive ? '✓ Alive' : '✗ Dead'}
                   </span>
-                </div>
-                <span className={player.is_alive ? 'text-green-600' : 'text-red-600'}>
-                  {player.is_alive ? '✓ Alive' : '✗ Dead'}
-                </span>
-              </div>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

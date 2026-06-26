@@ -50,7 +50,7 @@ export type Database = {
           id: string;
           game_id: string;
           user_id: string | null;
-          role: 'imposter' | 'crewmate' | 'unassigned';
+          role: 'imposter' | 'crewmate' | 'mafia' | 'doctor' | 'sheriff' | 'civilian' | 'unassigned';
           is_alive: boolean;
           voted_for_user_id: string | null;
           joined_at: string;
