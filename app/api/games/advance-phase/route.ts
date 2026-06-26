@@ -100,7 +100,10 @@ export async function POST(req: NextRequest) {
       }
     } else if (currentRound.phase === 'results') {
       // Check if max rounds reached
-      if (gameData.current_round >= gameData.max_rounds) {
+      const maxRounds = gameData.max_rounds || 999; // Default to 999 if not set (effectively infinite)
+      console.log(`[Advance Phase] Current round: ${gameData.current_round}, Max rounds: ${maxRounds}`);
+
+      if (gameData.current_round >= maxRounds) {
         // Game is over
         await supabase
           .from('games')

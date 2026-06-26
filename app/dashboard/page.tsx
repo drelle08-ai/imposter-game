@@ -77,6 +77,7 @@ export default function DashboardPage() {
         status: 'lobby',
         invite_code: inviteCode,
         max_players: 8,
+        max_rounds: 3,
         current_round: 1,
       })
       .select()
