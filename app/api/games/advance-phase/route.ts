@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
 
     // Mafia-specific phase advancement
     if (gameType === 'mafia') {
+      console.log(`[Advance Phase] Mafia game: advancing from ${currentRound.phase} phase (round ${gameData.current_round})`);
       return await advanceMafiaPhase(gameId, gameData, currentRound, players);
     }
 
@@ -65,19 +66,33 @@ async function advanceMafiaPhase(
   players: any[]
 ) {
   if (currentRound.phase === 'night') {
+    console.log(`[Night to Day] Processing night actions for round ${gameData.current_round}`);
+
     // Process night actions: apply kills and saves
     let killedPlayerId = currentRound.mafia_killed_player;
     const savedPlayerId = currentRound.doctor_saved_player;
     const investigatedPlayerId = currentRound.sheriff_investigated_player;
 
+    console.log(`[Night to Day] Actions - Kill: ${killedPlayerId}, Save: ${savedPlayerId}, Investigate: ${investigatedPlayerId}`);
+
     // Check if killed player was saved
     if (killedPlayerId === savedPlayerId) {
+      console.log(`[Night to Day] Killed player was saved!`);
       killedPlayerId = null;
     }
 
     // Mark killed player as dead
     if (killedPlayerId) {
-      await supabase.from('game_players').update({ is_alive: false }).eq('id', killedPlayerId);
+      const { error: killError } = await supabase
+        .from('game_players')
+        .update({ is_alive: false })
+        .eq('id', killedPlayerId);
+
+      if (killError) {
+        console.error('[Night to Day] Error marking player as dead:', killError);
+        return NextResponse.json({ error: 'Failed to process kill action' }, { status: 500 });
+      }
+      console.log(`[Night to Day] Marked player ${killedPlayerId} as dead`);
     }
 
     // Determine investigation result (is the investigated player mafia?)
@@ -85,16 +100,24 @@ async function advanceMafiaPhase(
     if (investigatedPlayerId) {
       const investigatedPlayer = players.find((p) => p.id === investigatedPlayerId);
       investigationResult = investigatedPlayer?.role === 'mafia';
+      console.log(`[Night to Day] Investigation result for ${investigatedPlayerId}: ${investigationResult}`);
     }
 
     // Transition to day
-    await supabase
+    const { error: phaseError } = await supabase
       .from('game_rounds')
       .update({
         phase: 'day',
         investigation_result: investigationResult,
       })
       .eq('id', currentRound.id);
+
+    if (phaseError) {
+      console.error('[Night to Day] Error updating phase to day:', phaseError);
+      return NextResponse.json({ error: 'Failed to transition to day phase' }, { status: 500 });
+    }
+
+    console.log(`[Night to Day] Successfully transitioned to day phase`);
 
     return NextResponse.json({
       status: 'phase_advanced',
