@@ -10,6 +10,7 @@ interface GameData {
   invite_code: string;
   status: string;
   current_round: number;
+  max_rounds: number;
 }
 
 interface GameRound {
