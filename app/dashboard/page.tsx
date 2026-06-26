@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [joinCode, setJoinCode] = useState('');
   const [joiningGame, setJoiningGame] = useState(false);
+  const [selectedGameType, setSelectedGameType] = useState<'imposter' | 'mafia'>('imposter');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -73,11 +74,11 @@ export default function DashboardPage() {
       .from('games')
       .insert({
         host_id: session.user.id,
-        game_type: 'imposter',
+        game_type: selectedGameType,
         status: 'lobby',
         invite_code: inviteCode,
         max_players: 8,
-        max_rounds: 3,
+        max_rounds: selectedGameType === 'mafia' ? 5 : 3,
         current_round: 1,
       })
       .select()
@@ -145,7 +146,32 @@ export default function DashboardPage() {
           {/* Create Game Card */}
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Create Game</h2>
-            <p className="text-gray-600 mb-6">Host a new Imposter game and invite your friends</p>
+            <p className="text-gray-600 mb-4">Select a game type and invite your friends</p>
+
+            {/* Game Type Selection */}
+            <div className="flex gap-3 mb-6">
+              <button
+                onClick={() => setSelectedGameType('imposter')}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+                  selectedGameType === 'imposter'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                }`}
+              >
+                🕵️ Imposter
+              </button>
+              <button
+                onClick={() => setSelectedGameType('mafia')}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+                  selectedGameType === 'mafia'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                }`}
+              >
+                🎭 Mafia
+              </button>
+            </div>
+
             <button
               onClick={handleCreateGame}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition text-lg"
