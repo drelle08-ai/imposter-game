@@ -290,7 +290,7 @@ export default function GamePlayPage() {
               )}
               <button
                 onClick={advancePhase}
-                disabled={isAdvancingPhase || (currentRound?.phase === 'results' && game.max_rounds && game.current_round >= game.max_rounds)}
+                disabled={isAdvancingPhase || (currentRound?.phase === 'results' && !!(game.max_rounds && game.current_round >= game.max_rounds))}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition"
               >
                 {isAdvancingPhase ? 'Advancing...' : currentRound?.phase === 'results' && game.max_rounds && game.current_round >= game.max_rounds ? 'Game Over' : 'Next Phase'}
