@@ -43,7 +43,8 @@ export default function GameLobbyPage() {
   const [error, setError] = useState('');
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
-  const [guests, setGuests] = useState<Array<{ name: string; phone: string }>>([]);;
+  const [guests, setGuests] = useState<Array<{ name: string; phone: string }>>([]);
+  const [maxRounds, setMaxRounds] = useState(3);;
 
   useEffect(() => {
     const loadGame = async () => {
@@ -205,7 +206,7 @@ export default function GameLobbyPage() {
       const res = await fetch('/api/games/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: game.id }),
+        body: JSON.stringify({ gameId: game.id, maxRounds }),
       });
 
       if (!res.ok) {
@@ -367,6 +368,24 @@ export default function GameLobbyPage() {
         {/* Host Controls */}
         {isHost && isJoined && (
           <div className="bg-white rounded-lg shadow-xl p-8">
+            <div className="mb-6">
+              <label className="block text-gray-700 font-semibold mb-3">
+                Max Rounds: <span className="text-2xl text-purple-600">{maxRounds}</span>
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={maxRounds}
+                onChange={(e) => setMaxRounds(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-2">
+                <span>1 Round</span>
+                <span>10 Rounds</span>
+              </div>
+            </div>
+
             <button
               onClick={handleStartGame}
               disabled={players.length < 3}

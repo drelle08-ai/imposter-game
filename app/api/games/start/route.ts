@@ -9,10 +9,18 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(req: NextRequest) {
   try {
-    const { gameId } = await req.json();
+    const { gameId, maxRounds } = await req.json();
 
     if (!gameId) {
       return NextResponse.json({ error: 'Game ID is required' }, { status: 400 });
+    }
+
+    // Update game with max_rounds if provided
+    if (maxRounds) {
+      await supabase
+        .from('games')
+        .update({ max_rounds: maxRounds })
+        .eq('id', gameId);
     }
 
     const { data: gameData, error: gameError } = await supabase

@@ -209,7 +209,7 @@ export default function GamePlayPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-white mb-1">Imposter</h1>
-            <p className="text-blue-100">Round {game.current_round}</p>
+            <p className="text-blue-100">Round {game.current_round} / {game.max_rounds}</p>
           </div>
           <div className="text-white text-right">
             <p className="text-sm text-blue-100">Players Alive: {aliveCount}</p>

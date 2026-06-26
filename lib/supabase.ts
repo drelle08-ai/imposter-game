@@ -37,6 +37,7 @@ export type Database = {
           status: 'lobby' | 'in_progress' | 'ended';
           invite_code: string;
           max_players: number;
+          max_rounds: number;
           current_round: number;
           use_keyword: boolean;
           give_hints_to_imposter: boolean;
