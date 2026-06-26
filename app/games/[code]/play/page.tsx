@@ -19,6 +19,7 @@ interface GameRound {
   round_number: number;
   imposter_eliminated: boolean;
   crewmates_won: boolean;
+  keyword?: string | null;
 }
 
 interface Player {
