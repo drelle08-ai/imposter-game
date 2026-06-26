@@ -141,28 +141,47 @@ async function advanceMafiaPhase(
     const aliveMafia = alivePlayers.filter((p) => p.role === 'mafia');
     const aliveCivilians = alivePlayers.filter((p) => p.role !== 'mafia');
 
-    // Mafia wins if they equal or outnumber civilians
-    const mafiaWins = aliveMafia.length >= aliveCivilians.length;
-
-    if (mafiaWins) {
+    // Check if all Mafia are eliminated - Civilians win!
+    if (aliveMafia.length === 0) {
       await supabase.from('games').update({ status: 'ended' }).eq('id', gameId);
 
       return NextResponse.json({
         status: 'game_ended',
-        message: 'Mafia wins! They have reached parity.',
+        message: 'Civilians win! All Mafia have been eliminated.',
+        winner: 'civilians',
+      });
+    }
+
+    // Check if all Civilians are eliminated - Mafia wins!
+    if (aliveCivilians.length === 0) {
+      await supabase.from('games').update({ status: 'ended' }).eq('id', gameId);
+
+      return NextResponse.json({
+        status: 'game_ended',
+        message: 'Mafia wins! All Civilians have been eliminated.',
         winner: 'mafia',
       });
     }
 
-    // Check if max rounds reached
-    const maxRounds = gameData.max_rounds || 5;
-    if (gameData.current_round >= maxRounds) {
-      // Game is over - civilians win
+    // Also check mafia parity (Mafia >= Civilians) - Mafia wins!
+    if (aliveMafia.length >= aliveCivilians.length) {
       await supabase.from('games').update({ status: 'ended' }).eq('id', gameId);
 
       return NextResponse.json({
         status: 'game_ended',
-        message: 'Civilians win! All rounds completed and mafia not eliminated.',
+        message: 'Mafia wins! They have reached parity and control voting.',
+        winner: 'mafia',
+      });
+    }
+
+    // Check if max rounds reached - Civilians win by default
+    const maxRounds = gameData.max_rounds || 5;
+    if (gameData.current_round >= maxRounds) {
+      await supabase.from('games').update({ status: 'ended' }).eq('id', gameId);
+
+      return NextResponse.json({
+        status: 'game_ended',
+        message: 'Civilians win! All rounds completed without Mafia reaching parity.',
         winner: 'civilians',
       });
     }
