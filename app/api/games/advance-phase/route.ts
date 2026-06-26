@@ -99,6 +99,21 @@ export async function POST(req: NextRequest) {
         }
       }
     } else if (currentRound.phase === 'results') {
+      // Check if max rounds reached
+      if (gameData.current_round >= gameData.max_rounds) {
+        // Game is over
+        await supabase
+          .from('games')
+          .update({ status: 'ended' })
+          .eq('id', gameId);
+
+        return NextResponse.json({
+          status: 'game_ended',
+          message: 'Game completed after ' + gameData.max_rounds + ' rounds',
+          totalRounds: gameData.max_rounds,
+        });
+      }
+
       // Start next round
       const { data: newRound } = await supabase
         .from('game_rounds')

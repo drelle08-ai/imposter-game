@@ -155,6 +155,18 @@ export default function GuestGamePage() {
     );
   }
 
+  if (game?.status === 'ended') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">🎮 Game Over!</h2>
+          <p className="text-gray-600 mb-6">Game completed after {game.current_round} rounds</p>
+          <p className="text-sm text-gray-500">Thanks for playing!</p>
+        </div>
+      </div>
+    );
+  }
+
   if (error || !game) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center p-4">
@@ -237,10 +249,10 @@ export default function GuestGamePage() {
               )}
               <button
                 onClick={advancePhase}
-                disabled={isAdvancingPhase}
+                disabled={isAdvancingPhase || (currentRound?.phase === 'results' && game.current_round >= game.max_rounds)}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition"
               >
-                {isAdvancingPhase ? 'Advancing...' : 'Next Phase'}
+                {isAdvancingPhase ? 'Advancing...' : currentRound?.phase === 'results' && game.current_round >= game.max_rounds ? 'Game Over' : 'Next Phase'}
               </button>
             </div>
           </div>
