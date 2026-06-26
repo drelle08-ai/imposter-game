@@ -226,7 +226,7 @@ export default function GamePlayPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-white mb-1">Imposter</h1>
-            <p className="text-blue-100">Round {game.current_round} / {game.max_rounds}</p>
+            <p className="text-blue-100">Round {game.current_round} / {game.max_rounds || '?'}</p>
           </div>
           <div className="text-white text-right">
             <p className="text-sm text-blue-100">Players Alive: {aliveCount}</p>
@@ -288,10 +288,10 @@ export default function GamePlayPage() {
               )}
               <button
                 onClick={advancePhase}
-                disabled={isAdvancingPhase || (currentRound?.phase === 'results' && game.current_round >= game.max_rounds)}
+                disabled={isAdvancingPhase || (currentRound?.phase === 'results' && game.max_rounds && game.current_round >= game.max_rounds)}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition"
               >
-                {isAdvancingPhase ? 'Advancing...' : currentRound?.phase === 'results' && game.current_round >= game.max_rounds ? 'Game Over' : 'Next Phase'}
+                {isAdvancingPhase ? 'Advancing...' : currentRound?.phase === 'results' && game.max_rounds && game.current_round >= game.max_rounds ? 'Game Over' : 'Next Phase'}
               </button>
             </div>
           </div>

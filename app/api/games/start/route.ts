@@ -15,12 +15,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Game ID is required' }, { status: 400 });
     }
 
-    // Update game with max_rounds if provided
-    if (maxRounds) {
-      await supabase
-        .from('games')
-        .update({ max_rounds: maxRounds })
-        .eq('id', gameId);
+    // Update game with max_rounds
+    const roundsToSet = maxRounds || 3; // Default to 3 if not provided
+    console.log(`[Game Start] Setting max_rounds to ${roundsToSet}`);
+
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({ max_rounds: roundsToSet })
+      .eq('id', gameId);
+
+    if (updateError) {
+      console.error('[Game Start] Error updating max_rounds:', updateError);
     }
 
     const { data: gameData, error: gameError } = await supabase
