@@ -42,6 +42,62 @@ export async function POST(req: NextRequest) {
       nextPhase = 'voting';
     } else if (currentRound.phase === 'voting') {
       nextPhase = 'results';
+
+      // Tally votes and determine elimination
+      const { data: players } = await supabase
+        .from('game_players')
+        .select('*')
+        .eq('game_id', gameId);
+
+      if (players && players.length > 0) {
+        // Count votes for each player
+        const voteCounts: { [playerId: string]: number } = {};
+        players.forEach((player) => {
+          if (player.voted_for_user_id) {
+            voteCounts[player.voted_for_user_id] = (voteCounts[player.voted_for_user_id] || 0) + 1;
+          }
+        });
+
+        // Find player with most votes
+        let eliminatedPlayerId = '';
+        let maxVotes = 0;
+        for (const [playerId, voteCount] of Object.entries(voteCounts)) {
+          if (voteCount > maxVotes) {
+            maxVotes = voteCount;
+            eliminatedPlayerId = playerId;
+          }
+        }
+
+        // Mark eliminated player as dead
+        if (eliminatedPlayerId) {
+          await supabase
+            .from('game_players')
+            .update({ is_alive: false })
+            .eq('id', eliminatedPlayerId);
+
+          // Check if eliminated player is the imposter
+          const eliminatedPlayer = players.find((p) => p.id === eliminatedPlayerId);
+          const isImposterEliminated = eliminatedPlayer?.role === 'imposter';
+
+          // Update round with results
+          await supabase
+            .from('game_rounds')
+            .update({
+              phase: nextPhase,
+              imposter_eliminated: isImposterEliminated,
+              crewmates_won: isImposterEliminated,
+            })
+            .eq('id', currentRound.id);
+
+          return NextResponse.json({
+            status: 'voting_complete',
+            phase: nextPhase,
+            round: gameData.current_round,
+            eliminatedPlayer: eliminatedPlayerId,
+            isImposterEliminated,
+          });
+        }
+      }
     } else if (currentRound.phase === 'results') {
       // Start next round
       const { data: newRound } = await supabase

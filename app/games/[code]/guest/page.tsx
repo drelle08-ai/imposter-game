@@ -221,7 +221,19 @@ export default function GuestGamePage() {
                 <p className="text-gray-600 mb-4">Vote to eliminate a player</p>
               )}
               {currentRound.phase === 'results' && (
-                <p className="text-gray-600 mb-4">Reviewing round results...</p>
+                <>
+                  {currentRound.crewmates_won ? (
+                    <>
+                      <p className="text-2xl font-bold text-green-600 mb-2">✓ Crewmates Won!</p>
+                      <p className="text-gray-600 mb-4">The imposter was eliminated!</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-2xl font-bold text-red-600 mb-2">✗ Imposter Survived</p>
+                      <p className="text-gray-600 mb-4">A crewmate was voted out...</p>
+                    </>
+                  )}
+                </>
               )}
               <button
                 onClick={advancePhase}
