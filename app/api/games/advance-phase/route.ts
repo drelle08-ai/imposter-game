@@ -187,27 +187,49 @@ async function advanceMafiaPhase(
     }
 
     // Start next round
-    await supabase
+    const nextRoundNumber = gameData.current_round + 1;
+
+    const { data: newRound, error: roundError } = await supabase
       .from('game_rounds')
       .insert({
         game_id: gameId,
-        round_number: gameData.current_round + 1,
+        round_number: nextRoundNumber,
         phase: 'night',
       })
       .select()
       .single();
 
-    await supabase
+    if (roundError) {
+      console.error('[Advance Phase] Error creating new round:', roundError);
+      return NextResponse.json({ error: 'Failed to create round: ' + roundError.message }, { status: 500 });
+    }
+
+    const { error: gameError } = await supabase
       .from('games')
-      .update({ current_round: gameData.current_round + 1 })
+      .update({ current_round: nextRoundNumber })
       .eq('id', gameId);
 
+    if (gameError) {
+      console.error('[Advance Phase] Error updating game round:', gameError);
+      return NextResponse.json({ error: 'Failed to update game: ' + gameError.message }, { status: 500 });
+    }
+
     // Reset votes for all players
-    await supabase.from('game_players').update({ voted_for_user_id: null }).eq('game_id', gameId);
+    const { error: voteError } = await supabase
+      .from('game_players')
+      .update({ voted_for_user_id: null })
+      .eq('game_id', gameId);
+
+    if (voteError) {
+      console.error('[Advance Phase] Error resetting votes:', voteError);
+      return NextResponse.json({ error: 'Failed to reset votes: ' + voteError.message }, { status: 500 });
+    }
+
+    console.log(`[Advance Phase] Advanced to round ${nextRoundNumber}, phase: night`);
 
     return NextResponse.json({
       status: 'round_advanced',
-      newRound: gameData.current_round + 1,
+      newRound: nextRoundNumber,
       phase: 'night',
     });
   }
