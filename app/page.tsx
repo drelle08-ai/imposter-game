@@ -148,7 +148,7 @@ export default function HomePage() {
             THE GAME
           </h2>
           <p className="text-[#b8860b] text-lg md:text-2xl mb-8" style={{ fontFamily: 'Crimson Text', fontSize: '1.2em' }}>
-            Three Legendary Games. Endless Entertainment.
+            Two Legendary Games. Endless Entertainment.
           </p>
           <p className="text-[#888] text-base md:text-lg max-w-2xl mx-auto mb-10" style={{ fontFamily: 'Crimson Text', fontSize: '1.1em' }}>
             Challenge your friends and family with our collection of premium multiplayer party games. Perfect for game nights, team building, or just having fun.
@@ -183,7 +183,7 @@ export default function HomePage() {
             Choose Your Game
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* IMPOSTER CARD */}
             <div className="game-card bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-blue-600 rounded-lg overflow-hidden shadow-2xl">
               <div className="bg-gradient-to-r from-blue-900 to-blue-700 p-8 text-center">
@@ -256,41 +256,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* LOVE MATCH CARD */}
-            <div className="game-card bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-pink-600 rounded-lg overflow-hidden shadow-2xl">
-              <div className="bg-gradient-to-r from-pink-900 to-rose-700 p-8 text-center">
-                <div className="text-6xl mb-4">❤️</div>
-                <h4 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'Playfair Display' }}>
-                  Love Match
-                </h4>
-              </div>
-              <div className="p-6">
-                <p className="text-[#d4af37] mb-4 font-semibold" style={{ fontFamily: 'Crimson Text', fontSize: '1.1em' }}>
-                  Know Your Partner?
-                </p>
-                <ul className="text-[#888] space-y-2 mb-6 text-sm" style={{ fontFamily: 'Crimson Text', fontSize: '1em' }}>
-                  <li>✓ 3-8 couples</li>
-                  <li>✓ Answer questions together</li>
-                  <li>✓ Compatibility scoring</li>
-                  <li>✓ Fun & laughter guaranteed</li>
-                </ul>
-                {user ? (
-                  <Link
-                    href="/dashboard"
-                    className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 rounded transition transform hover:scale-105 block text-center"
-                  >
-                    Play Love Match
-                  </Link>
-                ) : (
-                  <Link
-                    href="/auth/signup"
-                    className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 rounded transition transform hover:scale-105 block text-center"
-                  >
-                    Sign Up to Play
-                  </Link>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </section>
