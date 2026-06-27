@@ -149,13 +149,26 @@ export async function POST(req: NextRequest) {
           }
         }
       } else {
-        // Game ended
+        // Game ended - call end game API to save results
         nextPhase = 'ended';
 
-        await supabase
-          .from('love_match_rooms')
-          .update({ status: 'ended', ended_at: new Date().toISOString() })
-          .eq('id', gameId);
+        try {
+          await fetch(
+            new URL('/api/games/love/end', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'),
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ gameId }),
+            }
+          );
+        } catch (err) {
+          console.error('[Love Match] Error calling end game API:', err);
+          // Continue anyway - update room status
+          await supabase
+            .from('love_match_rooms')
+            .update({ status: 'ended', ended_at: new Date().toISOString() })
+            .eq('id', gameId);
+        }
       }
     }
 
