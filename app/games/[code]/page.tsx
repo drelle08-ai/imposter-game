@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface GameData {
   id: string;
@@ -295,7 +295,7 @@ export default function GameLobbyPage() {
             </button>
             {showQR && (
               <div className="bg-white p-4 rounded-lg mb-6">
-                <QRCode
+                <QRCodeSVG
                   value={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/games/${game?.invite_code}`}
                   size={256}
                   level="H"
