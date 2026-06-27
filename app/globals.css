@@ -1,25 +1,63 @@
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Playfair+Display:wght@700;900&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   color-scheme: dark;
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   background: #000000;
   color: #e8e8e8;
   font-family: 'Crimson Text', serif;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Playfair Display', serif;
   font-weight: 700;
   color: #d4af37;
+  letter-spacing: 0.05em;
+}
+
+a {
+  color: #d4af37;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+a:hover {
+  color: #f0d966;
+}
+
+button {
+  cursor: pointer;
+  font-family: 'Crimson Text', serif;
+  transition: all 150ms ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+input, textarea, select {
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
 }
