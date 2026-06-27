@@ -17,21 +17,22 @@ export default function HomePage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (session) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id, username')
-          .eq('id', session.user.id)
-          .single();
-
-        setUser(userData);
+        if (session) {
+          setUser({
+            id: session.user.id,
+            username: session.user.email?.split('@')[0] || 'Player',
+          });
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     checkAuth();
