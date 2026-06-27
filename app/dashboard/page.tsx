@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [joinCode, setJoinCode] = useState('');
   const [joiningGame, setJoiningGame] = useState(false);
-  const [selectedGameType, setSelectedGameType] = useState<'imposter' | 'mafia'>('imposter');
+  const [selectedGameType, setSelectedGameType] = useState<'imposter' | 'mafia' | 'love'>('imposter');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -67,6 +67,34 @@ export default function DashboardPage() {
     } = await supabase.auth.getSession();
 
     if (!session) return;
+
+    // Love Match uses a different table and flow
+    if (selectedGameType === 'love') {
+      try {
+        const res = await fetch('/api/games/love/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: session.user.id,
+            maxRounds: 10,
+            maxCouples: 8,
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          alert('Failed to create game: ' + (data.error || 'Unknown error'));
+          return;
+        }
+
+        const data = await res.json();
+        router.push(`/games/${data.room.roomCode}/love`);
+        return;
+      } catch (error) {
+        alert('Error creating game: ' + String(error));
+        return;
+      }
+    }
 
     const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -149,10 +177,10 @@ export default function DashboardPage() {
             <p className="text-[#888] mb-6" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>Select a game and begin</p>
 
             {/* Game Type Selection */}
-            <div className="flex gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-3 mb-6">
               <button
                 onClick={() => setSelectedGameType('imposter')}
-                className={`flex-1 py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
+                className={`py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
                   selectedGameType === 'imposter'
                     ? 'bg-[#d4af37] text-black'
                     : 'bg-[#3a3a3a] text-[#d4af37] border border-[#d4af37]'
@@ -162,13 +190,23 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => setSelectedGameType('mafia')}
-                className={`flex-1 py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
+                className={`py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
                   selectedGameType === 'mafia'
                     ? 'bg-[#d4af37] text-black'
                     : 'bg-[#3a3a3a] text-[#d4af37] border border-[#d4af37]'
                 }`}
               >
                 🎭 Mafia
+              </button>
+              <button
+                onClick={() => setSelectedGameType('love')}
+                className={`py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
+                  selectedGameType === 'love'
+                    ? 'bg-[#d4af37] text-black'
+                    : 'bg-[#3a3a3a] text-[#d4af37] border border-[#d4af37]'
+                }`}
+              >
+                ❤️ Love Match
               </button>
             </div>
 
