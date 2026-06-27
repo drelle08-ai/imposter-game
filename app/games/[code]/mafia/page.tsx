@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import QRCode from 'qrcode.react';
 
 interface GameData {
   id: string;
@@ -44,10 +45,9 @@ export default function MafiaLobbyPage() {
   const [isHost, setIsHost] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
   const [error, setError] = useState('');
-  const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
   const [maxRounds, setMaxRounds] = useState(5);
   const [copied, setCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
     const loadGame = async () => {
@@ -86,7 +86,7 @@ export default function MafiaLobbyPage() {
 
       const { data: playersData } = await supabase
         .from('game_players')
-        .select(`id, user_id, role, is_alive, joined_at, guest_name, guest_phone, users(username)`)
+        .select(`id, user_id, role, is_alive, joined_at, guest_name, users(username)`)
         .eq('game_id', gameData.id);
 
       setPlayers((playersData as any) || []);
@@ -131,29 +131,6 @@ export default function MafiaLobbyPage() {
     }
 
     setIsJoined(true);
-  };
-
-  const handleAddGuest = async () => {
-    if (!game || !guestName.trim() || !guestPhone.trim()) {
-      setError('Please enter guest name and phone number');
-      return;
-    }
-
-    const { error } = await supabase.from('game_players').insert({
-      game_id: game.id,
-      guest_name: guestName,
-      guest_phone: guestPhone,
-      role: 'unassigned',
-      is_alive: true,
-    });
-
-    if (error) {
-      setError('Failed to add guest: ' + error.message);
-      return;
-    }
-
-    setGuestName('');
-    setGuestPhone('');
   };
 
   const handleStartGame = async () => {
@@ -270,7 +247,7 @@ export default function MafiaLobbyPage() {
           <div className="w-12"></div>
         </div>
 
-        {/* Game Code Card */}
+        {/* Game Code & QR Card */}
         <div className="lobby-card bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8 mb-6">
           <div className="text-center mb-8">
             <p className="text-[#b8860b] mb-2 text-sm tracking-widest" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>FACTION CODE</p>
@@ -279,12 +256,33 @@ export default function MafiaLobbyPage() {
             </h2>
           </div>
 
+          {/* QR Code Section */}
+          <div className="flex flex-col items-center mb-8">
+            <button
+              onClick={() => setShowQR(!showQR)}
+              className="mb-4 text-[#d4af37] hover:text-[#f0d966] transition font-semibold"
+              style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}
+            >
+              {showQR ? '← Hide QR Code' : 'Show QR Code →'}
+            </button>
+            {showQR && (
+              <div className="bg-white p-4 rounded-lg mb-6">
+                <QRCode
+                  value={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/games/${game?.invite_code}`}
+                  size={256}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+            )}
+          </div>
+
           <button
             onClick={copyInviteLink}
             className="w-full bg-[#d4af37] hover:bg-[#f0d966] text-black font-bold py-3 rounded transition transform hover:scale-105 mb-4"
             style={{fontFamily: 'Crimson Text', fontSize: '1.1em', letterSpacing: '0.05em'}}
           >
-            {copied ? '✓ Code Copied' : 'Copy Invite Link'}
+            {copied ? '✓ Link Copied' : 'Copy Invite Link'}
           </button>
 
           {!isJoined && (
@@ -301,38 +299,6 @@ export default function MafiaLobbyPage() {
         {error && (
           <div className="lobby-card bg-red-900 border-2 border-red-600 rounded-lg p-4 mb-6">
             <p className="text-red-200 text-center" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>{error}</p>
-          </div>
-        )}
-
-        {/* Guest Management (Host Only) */}
-        {isHost && isJoined && (
-          <div className="lobby-card bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8 mb-6">
-            <h3 className="text-2xl font-bold text-[#d4af37] mb-6" style={{fontFamily: 'Playfair Display'}}>Recruit Soldiers</h3>
-            <div className="space-y-3">
-              <input
-                type="text"
-                placeholder="Name"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                className="w-full px-4 py-3 bg-[#3a3a3a] border-2 border-[#d4af37] text-white rounded focus:outline-none transition"
-                style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}
-              />
-              <input
-                type="tel"
-                placeholder="Phone (+1 555-1234)"
-                value={guestPhone}
-                onChange={(e) => setGuestPhone(e.target.value)}
-                className="w-full px-4 py-3 bg-[#3a3a3a] border-2 border-[#d4af37] text-white rounded focus:outline-none transition"
-                style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}
-              />
-              <button
-                onClick={handleAddGuest}
-                className="w-full bg-[#d4af37] hover:bg-[#f0d966] text-black font-bold py-2 rounded transition"
-                style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}
-              >
-                Add Soldier
-              </button>
-            </div>
           </div>
         )}
 
@@ -356,9 +322,6 @@ export default function MafiaLobbyPage() {
                     {currentUser?.id === player.user_id && <span className="ml-2 text-[#b8860b]">(You)</span>}
                     {game.host_id === player.user_id && (
                       <span className="ml-2 bg-[#d4af37] text-black text-xs px-2 py-1 rounded font-bold">Boss</span>
-                    )}
-                    {player.guest_name && (
-                      <span className="ml-2 bg-[#666] text-[#d4af37] text-xs px-2 py-1 rounded">Associate</span>
                     )}
                   </span>
                 </div>
