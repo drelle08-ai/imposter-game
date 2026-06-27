@@ -5,6 +5,32 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
+const designTokens = {
+  colors: {
+    primary: '#d4af37',
+    primaryHover: '#f0d966',
+    background: '#000000',
+    surface: '#1a1a1a',
+    surfaceLight: '#2a2a2a',
+    text: '#ffffff',
+    textSecondary: '#b8860b',
+    textMuted: '#666666',
+    border: '#d4af37',
+    error: '#dc2626',
+  },
+  fonts: {
+    heading: "'Playfair Display', serif",
+    body: "'Crimson Text', serif",
+  },
+  spacing: {
+    xs: '0.5rem',
+    sm: '1rem',
+    md: '1.5rem',
+    lg: '2rem',
+    xl: '3rem',
+  },
+};
+
 interface User {
   id: string;
   username: string;
@@ -17,7 +43,6 @@ interface Game {
   game_type: string;
   status: string;
   created_at: string;
-  host_id: string;
 }
 
 export default function DashboardPage() {
@@ -26,250 +51,314 @@ export default function DashboardPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [joinCode, setJoinCode] = useState('');
-  const [joiningGame, setJoiningGame] = useState(false);
-  const [selectedGameType, setSelectedGameType] = useState<'imposter' | 'mafia' | 'love'>('imposter');
+  const [selectedGameType, setSelectedGameType] = useState<'imposter' | 'mafia'>('imposter');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/auth/login');
         return;
       }
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
 
-      setUser(userData);
+        setUser(userData);
 
-      const { data: gamesData } = await supabase
-        .from('games')
-        .select('*')
-        .eq('host_id', session.user.id)
-        .order('created_at', { ascending: false });
+        const { data: gamesData } = await supabase
+          .from('games')
+          .select('*')
+          .eq('host_id', session.user.id)
+          .order('created_at', { ascending: false });
 
-      setGames(gamesData || []);
-      setLoading(false);
+        setGames(gamesData || []);
+      } catch (err) {
+        console.error('Error loading dashboard:', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     checkAuth();
   }, [router]);
 
   const handleCreateGame = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) return;
-
-    // Love Match uses a different table and flow
-    if (selectedGameType === 'love') {
-      try {
-        const res = await fetch('/api/games/love/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: session.user.id,
-            maxRounds: 10,
-            maxCouples: 8,
-          }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          alert('Failed to create game: ' + (data.error || 'Unknown error'));
-          return;
-        }
-
-        const data = await res.json();
-        router.push(`/games/${data.room.roomCode}/love`);
-        return;
-      } catch (error) {
-        alert('Error creating game: ' + String(error));
-        return;
-      }
-    }
-
+    setCreating(true);
     const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    const { data: gameData, error } = await supabase
-      .from('games')
-      .insert({
-        host_id: session.user.id,
-        game_type: selectedGameType,
-        status: 'lobby',
-        invite_code: inviteCode,
-        max_players: 8,
-        max_rounds: selectedGameType === 'mafia' ? 5 : 3,
-        current_round: 1,
-      })
-      .select()
-      .single();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
-    if (error) {
-      alert('Failed to create game: ' + error.message);
-      return;
+    try {
+      const { data } = await supabase
+        .from('games')
+        .insert({
+          invite_code: inviteCode,
+          game_type: selectedGameType,
+          host_id: session.user.id,
+          status: 'lobby',
+        })
+        .select()
+        .single();
+
+      if (data) {
+        router.push(`/games/${inviteCode}/${selectedGameType}`);
+      }
+    } catch (error) {
+      console.error('Error creating game:', error);
+      alert('Failed to create game');
+    } finally {
+      setCreating(false);
     }
-
-    router.push(`/games/${inviteCode}`);
   };
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
-    setJoiningGame(true);
+    if (joinCode.length !== 6) return;
 
-    const { data: gameData, error } = await supabase
-      .from('games')
-      .select('*')
-      .eq('invite_code', joinCode.toUpperCase())
-      .single();
+    try {
+      const { data } = await supabase
+        .from('games')
+        .select('*')
+        .eq('invite_code', joinCode)
+        .single();
 
-    if (error || !gameData) {
-      alert('Game not found. Check the invite code.');
-      setJoiningGame(false);
-      return;
+      if (data) {
+        router.push(`/games/${joinCode}/${data.game_type}`);
+      }
+    } catch (error) {
+      console.error('Error joining game:', error);
+      alert('Game not found');
     }
-
-    router.push(`/games/${joinCode.toUpperCase()}`);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/auth/login');
+    router.push('/');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-[#d4af37] text-xl" style={{fontFamily: 'Crimson Text', fontSize: '1.5em'}}>Loading...</div>
+      <div style={{ minHeight: '100vh', backgroundColor: designTokens.colors.background, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: designTokens.fonts.body }}>
+        <div style={{ fontSize: '1.5rem', color: designTokens.colors.primary }}>Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black" style={{ width: '100%' }}>
-      <div className="px-4 py-8" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-        {/* Header */}
-        <div className="flex justify-between items-center mb-12 pb-8 border-b-2 border-[#d4af37]">
-          <div>
-            <h1 className="text-5xl font-bold text-[#d4af37]" style={{fontFamily: 'Playfair Display'}}>🎭 THE GAME</h1>
-            <p className="text-[#b8860b] mt-2" style={{fontFamily: 'Crimson Text', fontSize: '1.2em'}}>Welcome back, {user?.username}</p>
+    <div style={{ minHeight: '100vh', backgroundColor: designTokens.colors.background, color: designTokens.colors.text, fontFamily: designTokens.fonts.body, width: '100%' }}>
+      {/* Header */}
+      <header style={{ borderBottom: `1px solid ${designTokens.colors.border}`, padding: `${designTokens.spacing.sm} ${designTokens.spacing.md}`, backgroundColor: 'rgba(0, 0, 0, 0.95)' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: designTokens.colors.primary, fontFamily: designTokens.fonts.heading, letterSpacing: '0.1em' }}>
+            🎮 THE GAME
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-900 hover:bg-red-800 text-[#d4af37] font-bold py-2 px-6 border border-[#d4af37] rounded transition transform hover:scale-105"
-          >
-            Exit
-          </button>
+          <div style={{ display: 'flex', gap: designTokens.spacing.md, alignItems: 'center' }}>
+            <span style={{ fontSize: '0.9rem', color: designTokens.colors.textSecondary }}>Welcome, {user?.username || 'Player'}</span>
+            <button onClick={handleLogout} style={{
+              backgroundColor: '#7f1d1d',
+              color: designTokens.colors.primary,
+              border: `2px solid ${designTokens.colors.primary}`,
+              padding: `${designTokens.spacing.xs} ${designTokens.spacing.md}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontFamily: designTokens.fonts.body,
+              fontWeight: 'bold',
+              transition: 'all 150ms ease',
+            }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#991b1b'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = '#7f1d1d'; }}>
+              Exit
+            </button>
+          </div>
         </div>
+      </header>
 
-        {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+      {/* Main Content */}
+      <main style={{ maxWidth: '1280px', margin: '0 auto', padding: designTokens.spacing.lg, width: '100%', boxSizing: 'border-box' }}>
+        {/* Action Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: designTokens.spacing.lg, marginBottom: designTokens.spacing.xl }}>
           {/* Create Game Card */}
-          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8">
-            <h2 className="text-3xl font-bold text-[#d4af37] mb-4" style={{fontFamily: 'Playfair Display'}}>Create Operation</h2>
-            <p className="text-[#888] mb-6" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>Select a game and begin</p>
+          <div style={{
+            background: `linear-gradient(135deg, ${designTokens.colors.surfaceLight}, ${designTokens.colors.surface})`,
+            border: `2px solid ${designTokens.colors.primary}`,
+            borderRadius: '12px',
+            padding: designTokens.spacing.lg,
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+          }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontFamily: designTokens.fonts.heading,
+              color: designTokens.colors.primary,
+              marginBottom: designTokens.spacing.md,
+              margin: 0,
+              marginBottom: designTokens.spacing.md,
+            }}>Create Game</h2>
+            <p style={{ color: designTokens.colors.textMuted, marginBottom: designTokens.spacing.md, margin: 0, marginBottom: designTokens.spacing.md }}>Select a game and invite friends</p>
 
-            {/* Game Type Selection */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: designTokens.spacing.sm, marginBottom: designTokens.spacing.md }}>
               <button
                 onClick={() => setSelectedGameType('imposter')}
-                className={`py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
-                  selectedGameType === 'imposter'
-                    ? 'bg-[#d4af37] text-black'
-                    : 'bg-[#3a3a3a] text-[#d4af37] border border-[#d4af37]'
-                }`}
+                style={{
+                  padding: `${designTokens.spacing.md}`,
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease',
+                  backgroundColor: selectedGameType === 'imposter' ? '#3b82f6' : designTokens.colors.surface,
+                  color: selectedGameType === 'imposter' ? '#ffffff' : designTokens.colors.primary,
+                  fontFamily: designTokens.fonts.body,
+                }}
               >
                 🕵️ Imposter
               </button>
               <button
                 onClick={() => setSelectedGameType('mafia')}
-                className={`py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
-                  selectedGameType === 'mafia'
-                    ? 'bg-[#d4af37] text-black'
-                    : 'bg-[#3a3a3a] text-[#d4af37] border border-[#d4af37]'
-                }`}
+                style={{
+                  padding: `${designTokens.spacing.md}`,
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease',
+                  backgroundColor: selectedGameType === 'mafia' ? '#a855f7' : designTokens.colors.surface,
+                  color: selectedGameType === 'mafia' ? '#ffffff' : designTokens.colors.primary,
+                  fontFamily: designTokens.fonts.body,
+                }}
               >
                 🎭 Mafia
-              </button>
-              <button
-                onClick={() => setSelectedGameType('love')}
-                className={`py-3 px-4 rounded font-bold transition transform hover:scale-105 ${
-                  selectedGameType === 'love'
-                    ? 'bg-[#d4af37] text-black'
-                    : 'bg-[#3a3a3a] text-[#d4af37] border border-[#d4af37]'
-                }`}
-              >
-                ❤️ Love Match
               </button>
             </div>
 
             <button
               onClick={handleCreateGame}
-              className="w-full bg-[#d4af37] hover:bg-[#f0d966] text-black font-bold py-3 rounded transition transform hover:scale-105"
+              disabled={creating}
+              style={{
+                width: '100%',
+                padding: designTokens.spacing.md,
+                backgroundColor: creating ? '#666666' : designTokens.colors.primary,
+                color: '#000000',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 'bold',
+                cursor: creating ? 'not-allowed' : 'pointer',
+                transition: 'all 150ms ease',
+                fontFamily: designTokens.fonts.body,
+                fontSize: '1rem',
+              }}
+              onMouseEnter={(e) => !creating && (e.target.style.backgroundColor = designTokens.colors.primaryHover)}
+              onMouseLeave={(e) => !creating && (e.target.style.backgroundColor = designTokens.colors.primary)}
             >
-              Create
+              {creating ? 'Creating...' : 'Create Game'}
             </button>
           </div>
 
           {/* Join Game Card */}
-          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8">
-            <h2 className="text-3xl font-bold text-[#d4af37] mb-4" style={{fontFamily: 'Playfair Display'}}>Join Operation</h2>
-            <p className="text-[#888] mb-6" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>Enter the operation code</p>
-            <form onSubmit={handleJoinGame} className="space-y-3">
+          <div style={{
+            background: `linear-gradient(135deg, ${designTokens.colors.surfaceLight}, ${designTokens.colors.surface})`,
+            border: `2px solid ${designTokens.colors.primary}`,
+            borderRadius: '12px',
+            padding: designTokens.spacing.lg,
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+          }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontFamily: designTokens.fonts.heading,
+              color: designTokens.colors.primary,
+              margin: 0,
+              marginBottom: designTokens.spacing.md,
+            }}>Join Game</h2>
+            <p style={{ color: designTokens.colors.textMuted, margin: 0, marginBottom: designTokens.spacing.md }}>Enter a game code to join</p>
+
+            <form onSubmit={handleJoinGame} style={{ display: 'flex', flexDirection: 'column', gap: designTokens.spacing.md }}>
               <input
                 type="text"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="e.g., ABC123"
                 maxLength={6}
-                className="w-full px-4 py-3 bg-[#3a3a3a] border-2 border-[#d4af37] text-[#d4af37] rounded focus:outline-none focus:ring-2 focus:ring-[#f0d966] text-center text-lg font-mono"
+                style={{
+                  padding: designTokens.spacing.md,
+                  backgroundColor: designTokens.colors.background,
+                  border: `2px solid ${designTokens.colors.border}`,
+                  borderRadius: '6px',
+                  color: designTokens.colors.primary,
+                  fontSize: '1.2rem',
+                  textAlign: 'center',
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.2em',
+                  boxSizing: 'border-box',
+                }}
               />
               <button
                 type="submit"
-                disabled={joiningGame || joinCode.length !== 6}
-                className="w-full bg-[#d4af37] hover:bg-[#f0d966] disabled:bg-gray-600 text-black font-bold py-3 rounded transition transform hover:scale-105"
+                disabled={joinCode.length !== 6}
+                style={{
+                  padding: designTokens.spacing.md,
+                  backgroundColor: joinCode.length === 6 ? designTokens.colors.primary : '#666666',
+                  color: '#000000',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  cursor: joinCode.length === 6 ? 'pointer' : 'not-allowed',
+                  transition: 'all 150ms ease',
+                  fontFamily: designTokens.fonts.body,
+                  fontSize: '1rem',
+                }}
+                onMouseEnter={(e) => joinCode.length === 6 && (e.target.style.backgroundColor = designTokens.colors.primaryHover)}
+                onMouseLeave={(e) => joinCode.length === 6 && (e.target.style.backgroundColor = designTokens.colors.primary)}
               >
-                {joiningGame ? 'Joining...' : 'Join'}
+                Join Game
               </button>
             </form>
           </div>
         </div>
 
-        {/* Games History */}
+        {/* Recent Games */}
         {games.length > 0 && (
-          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8">
-            <h2 className="text-3xl font-bold text-[#d4af37] mb-6" style={{fontFamily: 'Playfair Display'}}>Your Operations</h2>
-            <div className="space-y-3">
+          <div style={{
+            background: `linear-gradient(135deg, ${designTokens.colors.surfaceLight}, ${designTokens.colors.surface})`,
+            border: `2px solid ${designTokens.colors.primary}`,
+            borderRadius: '12px',
+            padding: designTokens.spacing.lg,
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+          }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontFamily: designTokens.fonts.heading,
+              color: designTokens.colors.primary,
+              margin: 0,
+              marginBottom: designTokens.spacing.lg,
+            }}>Your Games</h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: designTokens.spacing.md }}>
               {games.map((game) => (
-                <Link
-                  key={game.id}
-                  href={`/games/${game.invite_code}`}
-                  className="block p-4 border border-[#d4af37] rounded hover:bg-[#3a3a3a] transition cursor-pointer transform hover:scale-102"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-semibold text-[#d4af37]">Code: {game.invite_code}</p>
-                      <p className="text-sm text-[#888] capitalize">
-                        {game.status} • {new Date(game.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className="bg-[#d4af37] text-black px-3 py-1 rounded-full text-sm font-medium">
-                      {game.game_type}
-                    </span>
-                  </div>
-                </Link>
+                <div key={game.id} style={{
+                  background: designTokens.colors.background,
+                  border: `1px solid ${designTokens.colors.border}`,
+                  borderRadius: '8px',
+                  padding: designTokens.spacing.md,
+                }}>
+                  <p style={{ margin: 0, marginBottom: designTokens.spacing.xs, fontWeight: 'bold', color: designTokens.colors.primary }}>
+                    Code: {game.invite_code}
+                  </p>
+                  <p style={{ margin: 0, marginBottom: designTokens.spacing.xs, color: designTokens.colors.textMuted, fontSize: '0.9rem' }}>
+                    {game.game_type.toUpperCase()} • {game.status}
+                  </p>
+                  <p style={{ margin: 0, color: designTokens.colors.textMuted, fontSize: '0.85rem' }}>
+                    {new Date(game.created_at).toLocaleDateString()}
+                  </p>
+                </div>
               ))}
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
