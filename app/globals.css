@@ -1,5 +1,7 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Playfair+Display:wght@700;900&display=swap');
+
+/* Tailwind CSS base, components, and utilities */
+@layer base, components, utilities;
 
 /* ============================================
    PREMIUM DESIGN TOKENS
