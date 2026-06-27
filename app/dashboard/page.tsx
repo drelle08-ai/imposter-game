@@ -153,8 +153,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-black" style={{ width: '100%' }}>
+      <div className="px-4 py-8" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
         {/* Header */}
         <div className="flex justify-between items-center mb-12 pb-8 border-b-2 border-[#d4af37]">
           <div>
