@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div style={{ minHeight: '100vh', backgroundColor: '#000000', color: '#ffffff', width: '100%' }}>
       <style>{`
         @keyframes slideIn {
           from { opacity: 0; transform: translateY(20px); }
@@ -31,8 +31,8 @@ export default function HomePage() {
       `}</style>
 
       {/* Header */}
-      <header className="border-b border-[#333] sticky top-0 bg-black/80 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+      <header style={{ borderBottom: '1px solid #333', position: 'sticky', top: 0, backgroundColor: 'rgba(0,0,0,0.8)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="text-3xl font-bold text-[#d4af37]" style={{ fontFamily: 'Playfair Display' }}>
             🎮 THE GAME
           </div>
@@ -48,8 +48,8 @@ export default function HomePage() {
       </header>
 
       {/* Hero */}
-      <section className="py-20 px-4 text-center">
-        <div className="max-w-4xl mx-auto">
+      <section style={{ padding: '5rem 1rem', textAlign: 'center' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <h1 className="hero-title text-6xl font-bold mb-6" style={{ fontFamily: 'Playfair Display' }}>
             THE GAME
           </h1>
@@ -69,13 +69,13 @@ export default function HomePage() {
       </section>
 
       {/* Games */}
-      <section className="py-20 px-4 bg-gradient-to-b from-black to-[#0a0a0a]">
-        <div className="max-w-6xl mx-auto">
+      <section style={{ padding: '5rem 1rem', background: 'linear-gradient(to bottom, #000000, #0a0a0a)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <h3 className="text-4xl font-bold text-center text-[#d4af37] mb-16" style={{ fontFamily: 'Playfair Display' }}>
             Choose Your Game
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', maxWidth: '900px', margin: '0 auto' }}>
             {/* Imposter */}
             <div className="game-card bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-blue-600 rounded-lg overflow-hidden shadow-2xl">
               <div className="bg-gradient-to-r from-blue-900 to-blue-700 p-8 text-center">
