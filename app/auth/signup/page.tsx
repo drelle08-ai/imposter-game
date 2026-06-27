@@ -10,7 +10,6 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +36,6 @@ export default function SignupPage() {
             id: authData.user.id,
             email,
             username,
-            phone_number: phoneNumber,
           });
 
         if (dbError) {
@@ -59,9 +57,9 @@ export default function SignupPage() {
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-[#d4af37] mb-2" style={{fontFamily: 'Playfair Display'}}>🎭</h1>
-          <h2 className="text-3xl font-bold text-[#d4af37]" style={{fontFamily: 'Playfair Display'}}>Join the Family</h2>
-          <p className="text-[#b8860b] mt-2 text-sm" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>Prove yourself worthy</p>
+          <h1 className="text-5xl font-bold text-[#d4af37] mb-2" style={{fontFamily: 'Playfair Display'}}>🎮</h1>
+          <h2 className="text-3xl font-bold text-[#d4af37]" style={{fontFamily: 'Playfair Display'}}>Create Account</h2>
+          <p className="text-[#b8860b] mt-2 text-sm" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>Join The Game</p>
         </div>
 
         {error && (
@@ -92,18 +90,6 @@ export default function SignupPage() {
               required
               className="w-full px-4 py-2 bg-[#3a3a3a] border border-[#d4af37] text-white rounded focus:outline-none focus:ring-2 focus:ring-[#d4af37]"
               placeholder="your@email.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#d4af37] mb-2">Phone Number</label>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              required
-              className="w-full px-4 py-2 bg-[#3a3a3a] border border-[#d4af37] text-white rounded focus:outline-none focus:ring-2 focus:ring-[#d4af37]"
-              placeholder="+1 (555) 123-4567"
             />
           </div>
 
