@@ -168,3 +168,138 @@ export function getPlacementMedal(placement: number): string {
       return '•';
   }
 }
+
+/**
+ * Special Rounds System
+ */
+
+export type SpecialRoundType = 'double_or_nothing' | 'audience_guess' | 'hot_streak' | 'wildcard' | null;
+
+export interface SpecialRoundConfig {
+  type: SpecialRoundType;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export const SPECIAL_ROUNDS: Record<string, SpecialRoundConfig> = {
+  double_or_nothing: {
+    type: 'double_or_nothing',
+    name: 'Double or Nothing',
+    description: 'Bet your current points! All or nothing!',
+    icon: '🎲',
+  },
+  audience_guess: {
+    type: 'audience_guess',
+    name: 'Audience Guess',
+    description: 'Other couples guess YOUR partner\'s answer. Bonus if only you match!',
+    icon: '👥',
+  },
+  hot_streak: {
+    type: 'hot_streak',
+    name: 'Hot Streak',
+    description: '3 exact matches in a row = +5 bonus points!',
+    icon: '🔥',
+  },
+  wildcard: {
+    type: 'wildcard',
+    name: 'Wildcard',
+    description: 'Random surprise rule! 🎪',
+    icon: '🃏',
+  },
+};
+
+/**
+ * Determine if this round should be a special round
+ * (1 in every 5 rounds has a ~20% chance to be special)
+ */
+export function shouldActivateSpecialRound(roundNumber: number): boolean {
+  // Every 5th round has special round potential
+  if (roundNumber % 5 !== 0) return false;
+
+  // 70% chance to activate when milestone round
+  return Math.random() < 0.7;
+}
+
+/**
+ * Pick a random special round type
+ */
+export function getRandomSpecialRound(): SpecialRoundType {
+  const types = ['double_or_nothing', 'audience_guess', 'hot_streak', 'wildcard'] as const;
+  return types[Math.floor(Math.random() * types.length)];
+}
+
+/**
+ * Calculate Double or Nothing result
+ */
+export function calculateDoubleOrNothing(
+  matchType: 'exact' | 'close' | 'miss',
+  basePoints: number,
+  betAmount: number
+): { points: number; message: string } {
+  if (matchType === 'exact') {
+    // Bet paid off - double!
+    return {
+      points: basePoints + betAmount,
+      message: `🎲 BET WON! +${basePoints + betAmount} pts (${basePoints} base + ${betAmount} bet)`,
+    };
+  }
+
+  // Bet lost - lose the bet amount
+  return {
+    points: Math.max(0, basePoints - betAmount),
+    message: `😞 Bet lost -${betAmount} pts`,
+  };
+}
+
+/**
+ * Track hot streak
+ */
+export function updateHotStreak(
+  currentStreak: number,
+  matchType: 'exact' | 'close' | 'miss'
+): { newStreak: number; bonusPoints: number } {
+  if (matchType === 'exact') {
+    const newStreak = currentStreak + 1;
+    const bonusPoints = newStreak === 3 ? 5 : 0; // Bonus at 3rd match
+    return { newStreak, bonusPoints };
+  }
+
+  // Streak broken
+  return { newStreak: 0, bonusPoints: 0 };
+}
+
+/**
+ * Get wildcard rule description
+ */
+export function getWildcardRule(): { rule: string; emoji: string; description: string } {
+  const wildcards = [
+    {
+      rule: 'SWAP ROLES',
+      emoji: '🔄',
+      description: 'Guesser becomes hot seat! Answerer must guess!',
+    },
+    {
+      rule: 'SPEED ROUND',
+      emoji: '⚡',
+      description: 'Timer reduced to 15 seconds for answers!',
+    },
+    {
+      rule: 'ANSWER OUT LOUD',
+      emoji: '📢',
+      description: 'Everyone hears the answer before reveal!',
+    },
+    {
+      rule: 'REVERSE GUESS',
+      emoji: '🔀',
+      description: 'Guesser answers about THEMSELVES instead!',
+    },
+    {
+      rule: 'TRIPLE POINTS',
+      emoji: '3️⃣',
+      description: 'All points this round are multiplied by 3!',
+    },
+  ];
+
+  return wildcards[Math.floor(Math.random() * wildcards.length)];
+}
