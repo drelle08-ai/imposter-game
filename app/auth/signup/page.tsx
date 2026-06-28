@@ -277,7 +277,7 @@ export default function SignupPage() {
             textDecoration: 'none',
             fontWeight: 'bold',
             transition: 'color 150ms ease',
-          }} onMouseEnter={(e) => e.target.style.color = designTokens.colors.primaryHover} onMouseLeave={(e) => e.target.style.color = designTokens.colors.primary}>
+          }} onMouseEnter={(e) => (e.target as HTMLElement).style.color = designTokens.colors.primaryHover} onMouseLeave={(e) => (e.target as HTMLElement).style.color = designTokens.colors.primary}>
             Sign In
           </Link>
         </p>
