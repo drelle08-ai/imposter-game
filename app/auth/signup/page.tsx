@@ -257,8 +257,8 @@ export default function SignupPage() {
               transition: 'transform 150ms ease',
               fontFamily: designTokens.fonts.body,
             }}
-            onMouseEnter={(e) => !loading && (e.target.style.transform = 'scale(1.02)')}
-            onMouseLeave={(e) => !loading && (e.target.style.transform = 'scale(1)')}
+            onMouseEnter={(e) => !loading && ((e.target as HTMLElement).style.transform = 'scale(1.02)')}
+            onMouseLeave={(e) => !loading && ((e.target as HTMLElement).style.transform = 'scale(1)')}
           >
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
