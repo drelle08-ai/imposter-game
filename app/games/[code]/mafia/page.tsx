@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
+import { useGamePlayers } from '@/lib/useGamePlayers';
+import PlayerList from '@/app/components/PlayerList';
+import { supabase } from '@/lib/supabase';
 
 const designTokens = {
   colors: {
@@ -34,7 +37,58 @@ export default function MafiaGamePage() {
   const params = useParams();
   const code = params.code as string;
   const [copied, setCopied] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isJoined, setIsJoined] = useState(false);
+  const { players, loading } = useGamePlayers(code);
+
   const gameUrl = typeof window !== 'undefined' ? `${window.location.origin}/games/${code}/mafia` : '';
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setCurrentUser(userData);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  const handleJoinGame = async () => {
+    if (!currentUser) return;
+    setJoining(true);
+
+    try {
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('id')
+        .eq('invite_code', code.toUpperCase())
+        .single();
+
+      if (!gameData) return;
+
+      const { error } = await supabase
+        .from('game_players')
+        .insert({
+          game_id: gameData.id,
+          user_id: currentUser.id,
+          role: 'unassigned',
+        });
+
+      if (!error) {
+        setIsJoined(true);
+      }
+    } catch (err) {
+      console.error('Error joining game:', err);
+    } finally {
+      setJoining(false);
+    }
+  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(gameUrl);
@@ -96,151 +150,190 @@ export default function MafiaGamePage() {
         maxWidth: '1280px',
         margin: '0 auto',
         padding: designTokens.spacing.lg,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 'calc(100vh - 120px)',
+        width: '100%',
+        boxSizing: 'border-box',
       }}>
         <div style={{
-          textAlign: 'center',
-          background: `linear-gradient(135deg, ${designTokens.colors.surfaceLight}, ${designTokens.colors.surface})`,
-          border: `2px solid ${designTokens.colors.primary}`,
-          borderRadius: '12px',
-          padding: designTokens.spacing.xl,
-          maxWidth: '600px',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9)',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: designTokens.spacing.lg,
+          alignItems: 'start',
         }}>
-          <div style={{ fontSize: '4rem', marginBottom: designTokens.spacing.md }}>
-            🎭
-          </div>
-
-          <h1 style={{
-            fontSize: '2.5rem',
-            fontFamily: designTokens.fonts.heading,
-            color: designTokens.colors.primary,
-            margin: 0,
-            marginBottom: designTokens.spacing.md,
-            letterSpacing: '0.05em',
-          }}>
-            Mafia Lobby
-          </h1>
-
+          {/* Left Column - Game Info */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: designTokens.spacing.lg,
-            marginBottom: designTokens.spacing.lg,
-            alignItems: 'center',
+            textAlign: 'center',
+            background: `linear-gradient(135deg, ${designTokens.colors.surfaceLight}, ${designTokens.colors.surface})`,
+            border: `2px solid ${designTokens.colors.primary}`,
+            borderRadius: '12px',
+            padding: designTokens.spacing.xl,
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9)',
           }}>
-            {/* Game Code */}
-            <div style={{
-              background: designTokens.colors.background,
-              border: `2px solid ${designTokens.colors.primary}`,
-              borderRadius: '8px',
-              padding: designTokens.spacing.lg,
-            }}>
-              <p style={{
-                fontSize: '1rem',
-                color: designTokens.colors.primary,
-                margin: 0,
-                marginBottom: designTokens.spacing.sm,
-                fontWeight: 'bold',
-              }}>
-                Game Code
-              </p>
-              <p style={{
-                fontSize: '1.8rem',
-                color: designTokens.colors.primaryHover,
-                margin: 0,
-                fontFamily: 'monospace',
-                letterSpacing: '0.2em',
-                fontWeight: 'bold',
-              }}>
-                {code}
-              </p>
+            <div style={{ fontSize: '4rem', marginBottom: designTokens.spacing.md }}>
+              🎭
             </div>
 
-            {/* QR Code */}
+            <h1 style={{
+              fontSize: '2.5rem',
+              fontFamily: designTokens.fonts.heading,
+              color: designTokens.colors.primary,
+              margin: 0,
+              marginBottom: designTokens.spacing.md,
+              letterSpacing: '0.05em',
+            }}>
+              Mafia Lobby
+            </h1>
+
             <div style={{
-              background: designTokens.colors.background,
-              border: `2px solid ${designTokens.colors.primary}`,
-              borderRadius: '8px',
-              padding: designTokens.spacing.md,
-              display: 'flex',
-              justifyContent: 'center',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: designTokens.spacing.lg,
+              marginBottom: designTokens.spacing.lg,
               alignItems: 'center',
             }}>
-              <QRCodeSVG
-                value={gameUrl}
-                size={150}
-                bgColor="#000000"
-                fgColor="#d4af37"
-                level="H"
-              />
+              {/* Game Code */}
+              <div style={{
+                background: designTokens.colors.background,
+                border: `2px solid ${designTokens.colors.primary}`,
+                borderRadius: '8px',
+                padding: designTokens.spacing.lg,
+              }}>
+                <p style={{
+                  fontSize: '1rem',
+                  color: designTokens.colors.primary,
+                  margin: 0,
+                  marginBottom: designTokens.spacing.sm,
+                  fontWeight: 'bold',
+                }}>
+                  Game Code
+                </p>
+                <p style={{
+                  fontSize: '1.8rem',
+                  color: designTokens.colors.primaryHover,
+                  margin: 0,
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.2em',
+                  fontWeight: 'bold',
+                }}>
+                  {code}
+                </p>
+              </div>
+
+              {/* QR Code */}
+              <div style={{
+                background: designTokens.colors.background,
+                border: `2px solid ${designTokens.colors.primary}`,
+                borderRadius: '8px',
+                padding: designTokens.spacing.md,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+                <QRCodeSVG
+                  value={gameUrl}
+                  size={150}
+                  bgColor="#000000"
+                  fgColor="#d4af37"
+                  level="H"
+                />
+              </div>
+            </div>
+
+            <p style={{
+              color: designTokens.colors.textMuted,
+              fontSize: '1.1rem',
+              lineHeight: '1.6',
+              marginBottom: designTokens.spacing.lg,
+            }}>
+              Game is ready! Players can join using the code above.
+            </p>
+
+            <div style={{
+              display: 'flex',
+              gap: designTokens.spacing.md,
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+            }}>
+              <button style={{
+                backgroundColor: designTokens.colors.primary,
+                color: '#000000',
+                padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
+                borderRadius: '6px',
+                border: 'none',
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 150ms ease',
+                fontFamily: designTokens.fonts.body,
+              }} onMouseEnter={(e) => {
+                e.target.style.backgroundColor = designTokens.colors.primaryHover;
+                e.target.style.transform = 'scale(1.05)';
+              }} onMouseLeave={(e) => {
+                e.target.style.backgroundColor = designTokens.colors.primary;
+                e.target.style.transform = 'scale(1)';
+              }}>
+                Start Game
+              </button>
+
+              <button onClick={handleCopyLink} style={{
+                backgroundColor: copied ? designTokens.colors.primary : 'transparent',
+                color: copied ? '#000000' : designTokens.colors.primary,
+                padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
+                borderRadius: '6px',
+                border: `2px solid ${designTokens.colors.primary}`,
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'all 150ms ease',
+                fontFamily: designTokens.fonts.body,
+              }} onMouseEnter={(e) => !copied && (e.target.style.backgroundColor = designTokens.colors.primary)} onMouseLeave={(e) => !copied && (e.target.style.backgroundColor = 'transparent')}>
+                {copied ? '✓ Copied!' : 'Copy Link'}
+              </button>
             </div>
           </div>
 
-          <p style={{
-            color: designTokens.colors.textMuted,
-            fontSize: '1.1rem',
-            lineHeight: '1.6',
-            marginBottom: designTokens.spacing.lg,
-          }}>
-            Game is ready! Players can join using the code above.
-          </p>
+          {/* Right Column - Players */}
+          <div>
+            <PlayerList players={players} loading={loading} maxPlayers={10} />
 
-          <div style={{
-            display: 'flex',
-            gap: designTokens.spacing.md,
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-          }}>
-            <button style={{
-              backgroundColor: designTokens.colors.primary,
-              color: '#000000',
-              padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
-              borderRadius: '6px',
-              border: 'none',
-              fontWeight: 'bold',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              transition: 'all 150ms ease',
-              fontFamily: designTokens.fonts.body,
-            }} onMouseEnter={(e) => {
-              e.target.style.backgroundColor = designTokens.colors.primaryHover;
-              e.target.style.transform = 'scale(1.05)';
-            }} onMouseLeave={(e) => {
-              e.target.style.backgroundColor = designTokens.colors.primary;
-              e.target.style.transform = 'scale(1)';
-            }}>
-              Start Game
-            </button>
+            {currentUser && !isJoined && (
+              <button
+                onClick={handleJoinGame}
+                disabled={joining}
+                style={{
+                  width: '100%',
+                  marginTop: designTokens.spacing.lg,
+                  backgroundColor: joining ? '#666666' : '#22c55e',
+                  color: '#ffffff',
+                  padding: designTokens.spacing.lg,
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontWeight: 'bold',
+                  fontSize: '1.1rem',
+                  cursor: joining ? 'not-allowed' : 'pointer',
+                  transition: 'all 150ms ease',
+                  fontFamily: designTokens.fonts.body,
+                }}
+                onMouseEnter={(e) => !joining && (e.target.style.backgroundColor = '#16a34a')}
+                onMouseLeave={(e) => !joining && (e.target.style.backgroundColor = '#22c55e')}
+              >
+                {joining ? 'Joining...' : '✓ Join Game'}
+              </button>
+            )}
 
-            <button onClick={handleCopyLink} style={{
-              backgroundColor: copied ? designTokens.colors.primary : 'transparent',
-              color: copied ? '#000000' : designTokens.colors.primary,
-              padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
-              borderRadius: '6px',
-              border: `2px solid ${designTokens.colors.primary}`,
-              fontWeight: 'bold',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              transition: 'all 150ms ease',
-              fontFamily: designTokens.fonts.body,
-            }} onMouseEnter={(e) => !copied && (e.target.style.backgroundColor = designTokens.colors.primary)} onMouseLeave={(e) => !copied && (e.target.style.backgroundColor = 'transparent')}>
-              {copied ? '✓ Copied!' : 'Copy Link'}
-            </button>
+            {isJoined && (
+              <div style={{
+                marginTop: designTokens.spacing.lg,
+                padding: designTokens.spacing.md,
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid #22c55e',
+                borderRadius: '8px',
+                textAlign: 'center',
+                color: '#86efac',
+              }}>
+                ✓ You've joined the game! Waiting for host to start...
+              </div>
+            )}
           </div>
-
-          <p style={{
-            color: designTokens.colors.textMuted,
-            fontSize: '0.9rem',
-            marginTop: designTokens.spacing.lg,
-            margin: 0,
-          }}>
-            Waiting for players to join...
-          </p>
         </div>
       </main>
     </div>
