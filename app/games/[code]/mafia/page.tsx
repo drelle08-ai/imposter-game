@@ -125,6 +125,12 @@ export default function MafiaGamePage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        console.log('Start game success:', data);
+        // Store keyword in localStorage for gameplay page
+        if (data.keyword) {
+          localStorage.setItem(`keyword_${gameData.id}`, data.keyword);
+        }
         // Navigate to gameplay
         router.push(`/games/${code}/mafia/play`);
       } else {

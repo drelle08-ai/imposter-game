@@ -56,6 +56,7 @@ export default function ImposterPlayPage() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
   const [playerRole, setPlayerRole] = useState<PlayerRole | null>(null);
+  const [keyword, setKeyword] = useState<string>('');
   const [currentPhase, setCurrentPhase] = useState<GamePhase>('role_reveal');
   const [timeLeft, setTimeLeft] = useState(30);
   const [hasVoted, setHasVoted] = useState(false);
@@ -112,12 +113,14 @@ export default function ImposterPlayPage() {
     if (!gameState || !currentUser) return;
 
     const loadPlayerRole = async () => {
-      const { data: player } = await supabase
+      const { data: player, error } = await supabase
         .from('game_players')
         .select('id, role, user_id')
         .eq('game_id', gameState.id)
         .eq('user_id', currentUser.id)
         .single();
+
+      console.log('Player role loaded:', { player, error, gameId: gameState.id, userId: currentUser.id });
 
       if (player) {
         setPlayerRole(player);
@@ -126,6 +129,27 @@ export default function ImposterPlayPage() {
 
     loadPlayerRole();
   }, [gameState?.id, currentUser?.id]);
+
+  // Retrieve keyword from localStorage
+  useEffect(() => {
+    if (!gameState) return;
+    const storedKeyword = localStorage.getItem(`keyword_${gameState.id}`);
+    console.log('Retrieved keyword:', { gameId: gameState.id, storedKeyword });
+    if (storedKeyword) {
+      setKeyword(storedKeyword);
+    }
+  }, [gameState?.id]);
+
+  // Log phase and role reveal state
+  useEffect(() => {
+    console.log('Phase and role state:', {
+      currentPhase,
+      playerRole,
+      keyword,
+      hasSeenRole,
+      shouldShowRoleReveal: currentPhase === 'role_reveal' && playerRole && !hasSeenRole,
+    });
+  }, [currentPhase, playerRole, keyword, hasSeenRole]);
 
   // Subscribe to round phase changes
   useEffect(() => {
@@ -233,7 +257,7 @@ export default function ImposterPlayPage() {
     return (
       <RoleReveal
         role={playerRole.role}
-        keyword={roundState?.keyword}
+        keyword={keyword}
         onContinue={handleRoleRevealContinue}
         playerCount={players.length}
         roundNumber={gameState?.current_round || 1}

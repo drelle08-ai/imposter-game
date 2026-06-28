@@ -56,6 +56,7 @@ export default function MafiaPlayPage() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
   const [playerRole, setPlayerRole] = useState<PlayerRole | null>(null);
+  const [keyword, setKeyword] = useState<string>('');
   const [currentPhase, setCurrentPhase] = useState<GamePhase>('role_reveal');
   const [timeLeft, setTimeLeft] = useState(30);
   const [hasVoted, setHasVoted] = useState(false);
@@ -126,6 +127,16 @@ export default function MafiaPlayPage() {
 
     loadPlayerRole();
   }, [gameState?.id, currentUser?.id]);
+
+  // Retrieve keyword from localStorage
+  useEffect(() => {
+    if (!gameState) return;
+    const storedKeyword = localStorage.getItem(`keyword_${gameState.id}`);
+    console.log('Retrieved keyword:', { gameId: gameState.id, storedKeyword });
+    if (storedKeyword) {
+      setKeyword(storedKeyword);
+    }
+  }, [gameState?.id]);
 
   // Subscribe to round phase changes
   useEffect(() => {
@@ -233,7 +244,7 @@ export default function MafiaPlayPage() {
     return (
       <RoleReveal
         role={playerRole.role}
-        keyword={roundState?.keyword}
+        keyword={keyword}
         onContinue={handleRoleRevealContinue}
         playerCount={players.length}
         roundNumber={gameState?.current_round || 1}
