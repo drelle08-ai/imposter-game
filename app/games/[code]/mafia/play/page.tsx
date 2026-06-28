@@ -195,9 +195,12 @@ export default function MafiaPlayPage() {
         if (prev <= 1) {
           if (currentPhase === 'discussion') {
             setCurrentPhase('voting');
+            setHasVoted(false); // Reset vote for new phase
             return 20;
           } else {
-            setCurrentPhase('discussion');
+            // Voting phase ends - process elimination
+            console.log('Voting phase ended, processing elimination...');
+            processElimination();
             return 30;
           }
         }
@@ -206,7 +209,50 @@ export default function MafiaPlayPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentPhase]);
+  }, [currentPhase, gameState?.id, roundState?.id]);
+
+  const processElimination = async () => {
+    if (!gameState || !roundState) return;
+
+    try {
+      console.log('Calling eliminate API:', { gameId: gameState.id, roundId: roundState.id });
+
+      const response = await fetch('/api/games/eliminate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: gameState.id,
+          roundId: roundState.id,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Elimination result:', data);
+
+      if (data.gameWon) {
+        // Game ended
+        console.log('Game won by:', data.winner);
+        setCurrentPhase('ended');
+      } else {
+        // Game continues to next round
+        console.log('Advancing to round:', data.nextRound);
+        setHasSeenRole(false);
+        setCurrentPhase('role_reveal');
+        setTimeLeft(30);
+        // Reload game state to get new round
+        const { data: newGame } = await supabase
+          .from('games')
+          .select('*')
+          .eq('id', gameState.id)
+          .single();
+        if (newGame) {
+          setGameState(newGame);
+        }
+      }
+    } catch (err) {
+      console.error('Error processing elimination:', err);
+    }
+  };
 
   const handleRoleRevealContinue = () => {
     setHasSeenRole(true);
@@ -284,6 +330,97 @@ export default function MafiaPlayPage() {
         playerCount={players.length}
         roundNumber={gameState?.current_round || 1}
       />
+    );
+  }
+
+  // Show game ended screen
+  if (currentPhase === 'ended') {
+    const isImposter = playerRole?.role === 'imposter';
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: designTokens.colors.background,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: designTokens.spacing.lg,
+      }}>
+        <div style={{
+          textAlign: 'center',
+          maxWidth: '600px',
+        }}>
+          <div style={{
+            fontSize: '4rem',
+            marginBottom: designTokens.spacing.lg,
+          }}>
+            🎭
+          </div>
+          <h1 style={{
+            fontSize: '3rem',
+            fontFamily: designTokens.fonts.heading,
+            color: designTokens.colors.primary,
+            marginBottom: designTokens.spacing.md,
+          }}>
+            GAME OVER
+          </h1>
+          <p style={{
+            fontSize: '1.5rem',
+            color: designTokens.colors.text,
+            marginBottom: designTokens.spacing.lg,
+          }}>
+            {gameState?.status === 'ended' ? (
+              <span>
+                {isImposter ? '🎭 Mafia' : '👥 Townspeople'} Win!
+              </span>
+            ) : (
+              'Game Ended'
+            )}
+          </p>
+          <div style={{
+            padding: designTokens.spacing.lg,
+            backgroundColor: designTokens.colors.surface,
+            borderRadius: '8px',
+            border: `1px solid ${designTokens.colors.primary}`,
+            marginBottom: designTokens.spacing.lg,
+          }}>
+            <p style={{
+              margin: 0,
+              color: designTokens.colors.textMuted,
+              marginBottom: designTokens.spacing.md,
+            }}>
+              {isImposter ? 'You were part of the Mafia' : 'You were a Townsperson'}
+            </p>
+            {keyword && !isImposter && (
+              <p style={{
+                margin: 0,
+                color: designTokens.colors.primary,
+                fontSize: '1.2rem',
+                fontWeight: 'bold',
+              }}>
+                Secret word was: {keyword}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              window.location.href = '/dashboard';
+            }}
+            style={{
+              padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
+              backgroundColor: designTokens.colors.primary,
+              color: '#000',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              fontFamily: designTokens.fonts.body,
+            }}
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
     );
   }
 
