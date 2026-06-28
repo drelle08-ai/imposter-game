@@ -79,6 +79,45 @@ export default function MafiaGamePage() {
     checkAuth();
   }, [code]);
 
+  // Subscribe to game status changes - auto-redirect when game starts
+  useEffect(() => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('id, status')
+      .eq('invite_code', code.toUpperCase())
+      .single();
+
+    if (!gameData) return;
+
+    const subscription = supabase
+      .channel(`game_${gameData.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'games',
+          filter: `id=eq.${gameData.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          console.log('Game status changed:', updated.status);
+          if (updated.status === 'in_progress') {
+            console.log('Game started, redirecting to play page...');
+            router.push(`/games/${code}/mafia/play`);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [code, router]);
+
   const handleJoinGame = async () => {
     if (!currentUser) return;
     setJoining(true);
