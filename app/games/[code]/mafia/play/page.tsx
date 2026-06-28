@@ -131,10 +131,14 @@ export default function MafiaPlayPage() {
   // Retrieve keyword from localStorage
   useEffect(() => {
     if (!gameState) return;
-    const storedKeyword = localStorage.getItem(`keyword_${gameState.id}`);
-    console.log('Retrieved keyword:', { gameId: gameState.id, storedKeyword });
+    const storageKey = `keyword_${gameState.id}`;
+    const storedKeyword = localStorage.getItem(storageKey);
+    console.log('Retrieved keyword from localStorage:', { storageKey, storedKeyword, allKeys: Object.keys(localStorage) });
     if (storedKeyword) {
+      console.log('Setting keyword state to:', storedKeyword);
       setKeyword(storedKeyword);
+    } else {
+      console.warn('Keyword not found in localStorage for key:', storageKey);
     }
   }, [gameState?.id]);
 
@@ -240,7 +244,22 @@ export default function MafiaPlayPage() {
   }
 
   // Show role reveal phase
-  if (currentPhase === 'role_reveal' && playerRole && !hasSeenRole) {
+  if (currentPhase === 'role_reveal' && !hasSeenRole) {
+    if (!playerRole) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          backgroundColor: designTokens.colors.background,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: designTokens.colors.primary,
+          fontFamily: designTokens.fonts.body,
+        }}>
+          Loading your role...
+        </div>
+      );
+    }
     return (
       <RoleReveal
         role={playerRole.role}

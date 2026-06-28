@@ -126,10 +126,13 @@ export default function MafiaGamePage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Start game success:', data);
+        console.log('Start game success:', { keyword: data.keyword, roundId: data.roundId, gameId: gameData.id });
         // Store keyword in localStorage for gameplay page
         if (data.keyword) {
+          console.log('Storing keyword in localStorage:', { key: `keyword_${gameData.id}`, value: data.keyword });
           localStorage.setItem(`keyword_${gameData.id}`, data.keyword);
+        } else {
+          console.warn('No keyword in response data!');
         }
         // Navigate to gameplay
         router.push(`/games/${code}/mafia/play`);
