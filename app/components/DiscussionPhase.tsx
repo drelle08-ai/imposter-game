@@ -60,7 +60,6 @@ export default function DiscussionPhase({
 
       <p style={{
         color: designTokens.colors.textMuted,
-        marginBottom: designTokens.spacing.md,
         margin: 0,
         marginBottom: designTokens.spacing.md,
       }}>
