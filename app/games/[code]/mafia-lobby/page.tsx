@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
 
 const designTokens = {
   colors: {
@@ -31,6 +33,14 @@ const designTokens = {
 export default function MafiaGamePage() {
   const params = useParams();
   const code = params.code as string;
+  const [copied, setCopied] = useState(false);
+  const gameUrl = typeof window !== 'undefined' ? `${window.location.origin}/games/${code}/mafia-lobby` : '';
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(gameUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div style={{
@@ -117,31 +127,58 @@ export default function MafiaGamePage() {
           </h1>
 
           <div style={{
-            background: designTokens.colors.background,
-            border: `2px solid ${designTokens.colors.primary}`,
-            borderRadius: '8px',
-            padding: designTokens.spacing.lg,
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: designTokens.spacing.lg,
             marginBottom: designTokens.spacing.lg,
+            alignItems: 'center',
           }}>
-            <p style={{
-              fontSize: '1.2rem',
-              color: designTokens.colors.primary,
-              margin: 0,
-              marginBottom: designTokens.spacing.sm,
-              fontWeight: 'bold',
+            {/* Game Code */}
+            <div style={{
+              background: designTokens.colors.background,
+              border: `2px solid ${designTokens.colors.primary}`,
+              borderRadius: '8px',
+              padding: designTokens.spacing.lg,
             }}>
-              Game Code
-            </p>
-            <p style={{
-              fontSize: '2rem',
-              color: designTokens.colors.primaryHover,
-              margin: 0,
-              fontFamily: 'monospace',
-              letterSpacing: '0.2em',
-              fontWeight: 'bold',
+              <p style={{
+                fontSize: '1rem',
+                color: designTokens.colors.primary,
+                margin: 0,
+                marginBottom: designTokens.spacing.sm,
+                fontWeight: 'bold',
+              }}>
+                Game Code
+              </p>
+              <p style={{
+                fontSize: '1.8rem',
+                color: designTokens.colors.primaryHover,
+                margin: 0,
+                fontFamily: 'monospace',
+                letterSpacing: '0.2em',
+                fontWeight: 'bold',
+              }}>
+                {code}
+              </p>
+            </div>
+
+            {/* QR Code */}
+            <div style={{
+              background: designTokens.colors.background,
+              border: `2px solid ${designTokens.colors.primary}`,
+              borderRadius: '8px',
+              padding: designTokens.spacing.md,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
             }}>
-              {code}
-            </p>
+              <QRCodeSVG
+                value={gameUrl}
+                size={150}
+                bgColor="#000000"
+                fgColor="#d4af37"
+                level="H"
+              />
+            </div>
           </div>
 
           <p style={{
@@ -180,9 +217,9 @@ export default function MafiaGamePage() {
               Start Game
             </button>
 
-            <button style={{
-              backgroundColor: 'transparent',
-              color: designTokens.colors.primary,
+            <button onClick={handleCopyLink} style={{
+              backgroundColor: copied ? designTokens.colors.primary : 'transparent',
+              color: copied ? '#000000' : designTokens.colors.primary,
               padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
               borderRadius: '6px',
               border: `2px solid ${designTokens.colors.primary}`,
@@ -191,14 +228,8 @@ export default function MafiaGamePage() {
               cursor: 'pointer',
               transition: 'all 150ms ease',
               fontFamily: designTokens.fonts.body,
-            }} onMouseEnter={(e) => {
-              e.target.style.backgroundColor = designTokens.colors.primary;
-              e.target.style.color = '#000000';
-            }} onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'transparent';
-              e.target.style.color = designTokens.colors.primary;
-            }}>
-              Copy Code
+            }} onMouseEnter={(e) => !copied && (e.target.style.backgroundColor = designTokens.colors.primary)} onMouseLeave={(e) => !copied && (e.target.style.backgroundColor = 'transparent')}>
+              {copied ? '✓ Copied!' : 'Copy Link'}
             </button>
           </div>
 
