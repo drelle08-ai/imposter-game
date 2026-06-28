@@ -61,6 +61,7 @@ export default function SignupPage() {
             id: authData.user.id,
             email,
             username,
+            phone_number: '', // SMS removed, phone number optional
           });
 
         if (dbError) {
