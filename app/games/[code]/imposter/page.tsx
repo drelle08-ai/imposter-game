@@ -106,15 +106,23 @@ export default function ImposterGamePage() {
     setStarting(true);
 
     try {
-      const { data: gameData } = await supabase
+      const { data: gameData, error: gameError } = await supabase
         .from('games')
-        .select('id')
+        .select('id, invite_code')
         .eq('invite_code', code.toUpperCase())
         .single();
 
-      if (!gameData) return;
+      console.log('Game lookup:', { code: code.toUpperCase(), gameData, gameError });
+
+      if (!gameData) {
+        console.error('No game found for code:', code.toUpperCase());
+        setStarting(false);
+        return;
+      }
 
       // Call start game API to assign roles
+      console.log('Calling start game API with:', { gameId: gameData.id, userId: currentUser.id });
+
       const response = await fetch('/api/games/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
