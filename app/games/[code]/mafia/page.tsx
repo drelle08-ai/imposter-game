@@ -129,12 +129,19 @@ export default function MafiaGamePage() {
         router.push(`/games/${code}/mafia/play`);
       } else {
         setStarting(false);
-        const error = await response.json();
-        console.error('Failed to start game:', error);
+        const text = await response.text();
+        console.error('API Error Status:', response.status);
+        console.error('API Error Text:', text);
+        try {
+          const error = JSON.parse(text);
+          console.error('API Error JSON:', error);
+        } catch (e) {
+          console.error('Could not parse error as JSON');
+        }
       }
     } catch (err) {
       setStarting(false);
-      console.error('Error starting game:', err);
+      console.error('Error starting game:', err instanceof Error ? err.message : err);
     }
   };
 

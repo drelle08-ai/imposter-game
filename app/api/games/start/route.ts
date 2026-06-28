@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
     const body: StartGameRequest = await request.json();
     const { gameId, userId } = body;
 
+    console.log('Starting game:', { gameId, userId });
+
     if (!gameId || !userId) {
       return NextResponse.json(
         { error: 'Missing gameId or userId' },
@@ -51,9 +53,11 @@ export async function POST(request: NextRequest) {
       .select('id, user_id')
       .eq('game_id', gameId);
 
+    console.log('Players query result:', { players, playersError });
+
     if (playersError || !players || players.length === 0) {
       return NextResponse.json(
-        { error: 'No players found in game' },
+        { error: `No players found: ${playersError?.message || 'empty list'}` },
         { status: 400 }
       );
     }
@@ -64,6 +68,8 @@ export async function POST(request: NextRequest) {
 
     // Generate keyword for this round
     const keyword = getRandomKeyword();
+
+    console.log('Assigning imposter:', { imposterPlayerId, keyword });
 
     // Create current round record
     const { data: round, error: roundError } = await supabase
@@ -77,9 +83,11 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
+    console.log('Round creation result:', { round, roundError });
+
     if (roundError) {
       return NextResponse.json(
-        { error: 'Failed to create round' },
+        { error: `Failed to create round: ${roundError.message}` },
         { status: 500 }
       );
     }
@@ -91,13 +99,17 @@ export async function POST(request: NextRequest) {
       assigned_round_id: round.id,
     }));
 
+    console.log('Updating player roles:', roleUpdates);
+
     const { error: updateError } = await supabase
       .from('game_players')
       .upsert(roleUpdates, { onConflict: 'id' });
 
+    console.log('Role update result:', { updateError });
+
     if (updateError) {
       return NextResponse.json(
-        { error: 'Failed to assign roles' },
+        { error: `Failed to assign roles: ${updateError.message}` },
         { status: 500 }
       );
     }
@@ -111,9 +123,11 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', gameId);
 
+    console.log('Game update result:', { gameError });
+
     if (gameError) {
       return NextResponse.json(
-        { error: 'Failed to update game status' },
+        { error: `Failed to update game status: ${gameError.message}` },
         { status: 500 }
       );
     }
@@ -124,8 +138,10 @@ export async function POST(request: NextRequest) {
       message: 'Game started, roles assigned',
     });
   } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Start game error:', errorMsg);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Unknown error' },
+      { error: `Server error: ${errorMsg}` },
       { status: 500 }
     );
   }
