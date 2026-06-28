@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useGamePlayers } from '@/lib/useGamePlayers';
 import PlayerList from '@/app/components/PlayerList';
@@ -35,12 +35,14 @@ const designTokens = {
 
 export default function ImposterGamePage() {
   const params = useParams();
+  const router = useRouter();
   const code = params.code as string;
   const [copied, setCopied] = useState(false);
   const [joining, setJoining] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isJoined, setIsJoined] = useState(false);
   const [gameUrl, setGameUrl] = useState('');
+  const [starting, setStarting] = useState(false);
   const { players, loading } = useGamePlayers(code);
 
   useEffect(() => {
@@ -97,6 +99,11 @@ export default function ImposterGamePage() {
     navigator.clipboard.writeText(gameUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleStartGame = () => {
+    setStarting(true);
+    router.push(`/games/${code}/imposter/play`);
   };
 
   return (
@@ -261,25 +268,20 @@ export default function ImposterGamePage() {
               justifyContent: 'center',
               flexWrap: 'wrap',
             }}>
-              <button style={{
-                backgroundColor: designTokens.colors.primary,
+              <button onClick={handleStartGame} disabled={starting} style={{
+                backgroundColor: starting ? '#666666' : designTokens.colors.primary,
                 color: '#000000',
                 padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
                 borderRadius: '6px',
                 border: 'none',
                 fontWeight: 'bold',
                 fontSize: '1rem',
-                cursor: 'pointer',
+                cursor: starting ? 'not-allowed' : 'pointer',
                 transition: 'all 150ms ease',
                 fontFamily: designTokens.fonts.body,
-              }} onMouseEnter={(e) => {
-                e.target.style.backgroundColor = designTokens.colors.primaryHover;
-                e.target.style.transform = 'scale(1.05)';
-              }} onMouseLeave={(e) => {
-                e.target.style.backgroundColor = designTokens.colors.primary;
-                e.target.style.transform = 'scale(1)';
-              }}>
-                Start Game
+                opacity: starting ? 0.7 : 1,
+              }} onMouseEnter={(e) => !starting && (e.target.style.backgroundColor = designTokens.colors.primaryHover)} onMouseLeave={(e) => !starting && (e.target.style.backgroundColor = designTokens.colors.primary)}>
+                {starting ? 'Starting...' : 'Start Game'}
               </button>
 
               <button onClick={handleCopyLink} style={{
