@@ -40,9 +40,12 @@ export default function MafiaGamePage() {
   const [joining, setJoining] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isJoined, setIsJoined] = useState(false);
+  const [gameUrl, setGameUrl] = useState('');
   const { players, loading } = useGamePlayers(code);
 
-  const gameUrl = typeof window !== 'undefined' ? `${window.location.origin}/games/${code}/mafia` : '';
+  useEffect(() => {
+    setGameUrl(`${window.location.origin}/games/${code}/mafia`);
+  }, [code]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -227,14 +230,19 @@ export default function MafiaGamePage() {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
+                minHeight: '190px',
               }}>
-                <QRCodeSVG
-                  value={gameUrl}
-                  size={150}
-                  bgColor="#000000"
-                  fgColor="#d4af37"
-                  level="H"
-                />
+                {gameUrl ? (
+                  <QRCodeSVG
+                    value={gameUrl}
+                    size={150}
+                    bgColor="#000000"
+                    fgColor="#d4af37"
+                    level="H"
+                  />
+                ) : (
+                  <p style={{ color: designTokens.colors.textMuted, margin: 0 }}>Loading...</p>
+                )}
               </div>
             </div>
 
