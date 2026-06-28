@@ -125,23 +125,30 @@ export default function ImposterGamePage() {
   const handleJoinGame = async () => {
     if (!currentUser) return;
     setJoining(true);
+    console.log('Join game clicked:', { userId: currentUser.id, code });
 
     try {
-      const { data: gameData } = await supabase
+      const { data: gameData, error: gameError } = await supabase
         .from('games')
         .select('id')
         .eq('invite_code', code.toUpperCase())
         .single();
 
-      if (!gameData) return;
+      console.log('Game lookup:', { gameData, gameError });
+      if (!gameData) {
+        console.error('No game found');
+        return;
+      }
 
       // Check if already joined
-      const { data: existingPlayer } = await supabase
+      const { data: existingPlayer, error: existingError } = await supabase
         .from('game_players')
         .select('id')
         .eq('game_id', gameData.id)
         .eq('user_id', currentUser.id)
         .maybeSingle();
+
+      console.log('Existing player check:', { existingPlayer, existingError });
 
       if (existingPlayer) {
         console.log('Already joined this game');
@@ -150,16 +157,22 @@ export default function ImposterGamePage() {
         return;
       }
 
-      const { error } = await supabase
+      const { data: insertData, error: insertError } = await supabase
         .from('game_players')
         .insert({
           game_id: gameData.id,
           user_id: currentUser.id,
           role: 'unassigned',
-        });
+        })
+        .select();
 
-      if (!error) {
+      console.log('Insert result:', { insertData, insertError });
+
+      if (!insertError) {
+        console.log('Successfully joined game!');
         setIsJoined(true);
+      } else {
+        console.error('Join failed:', insertError);
       }
     } catch (err) {
       console.error('Error joining game:', err);
