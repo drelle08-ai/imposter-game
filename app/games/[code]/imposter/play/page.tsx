@@ -121,7 +121,8 @@ export default function ImposterPlayPage() {
           .select('*')
           .eq('game_id', gameState.id)
           .eq('user_id', currentUser.id)
-          .maybeSingle();
+          .limit(1)
+          .single();
 
         console.log('Player role query result:', { player, error, status: error?.code });
 
