@@ -77,6 +77,21 @@ export default function ImposterGamePage() {
 
       if (!gameData) return;
 
+      // Check if already joined
+      const { data: existingPlayer } = await supabase
+        .from('game_players')
+        .select('id')
+        .eq('game_id', gameData.id)
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (existingPlayer) {
+        console.log('Already joined this game');
+        setIsJoined(true);
+        setJoining(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('game_players')
         .insert({
