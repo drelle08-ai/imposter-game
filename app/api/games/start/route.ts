@@ -53,9 +53,10 @@ export async function POST(request: NextRequest) {
       .select('id, user_id')
       .eq('game_id', gameId);
 
-    console.log('Players query result:', { players, playersError });
+    console.log('Players query result:', { playersCount: players?.length, playersError });
 
     if (playersError || !players || players.length === 0) {
+      console.error('Players error:', playersError?.message);
       return NextResponse.json(
         { error: `No players found: ${playersError?.message || 'empty list'}` },
         { status: 400 }
@@ -65,54 +66,59 @@ export async function POST(request: NextRequest) {
     // Randomly select one player as imposter
     const imposterIndex = Math.floor(Math.random() * players.length);
     const imposterPlayerId = players[imposterIndex].id;
-
-    // Generate keyword for this round
     const keyword = getRandomKeyword();
 
     console.log('Assigning imposter:', { imposterPlayerId, keyword });
 
-    // Create current round record
+    // Create current round record - without keyword column for now
     const { data: round, error: roundError } = await supabase
       .from('game_rounds')
       .insert({
         game_id: gameId,
         round_number: 1,
         phase: 'role_reveal',
-        keyword: keyword,
       })
       .select()
       .single();
 
-    console.log('Round creation result:', { round, roundError });
+    console.log('Round creation result:', { roundId: round?.id, roundError: roundError?.message });
 
     if (roundError) {
+      console.error('Round error details:', roundError);
       return NextResponse.json(
         { error: `Failed to create round: ${roundError.message}` },
         { status: 500 }
       );
     }
 
-    // Assign roles to all players
-    const roleUpdates = players.map((player) => ({
-      id: player.id,
-      role: player.id === imposterPlayerId ? 'imposter' : 'crewmate',
-      assigned_round_id: round.id,
-    }));
-
-    console.log('Updating player roles:', roleUpdates);
-
-    const { error: updateError } = await supabase
-      .from('game_players')
-      .upsert(roleUpdates, { onConflict: 'id' });
-
-    console.log('Role update result:', { updateError });
-
-    if (updateError) {
+    if (!round) {
+      console.error('Round is null after creation');
       return NextResponse.json(
-        { error: `Failed to assign roles: ${updateError.message}` },
+        { error: 'Round creation returned null' },
         { status: 500 }
       );
     }
+
+    // Assign roles to all players - use update instead of upsert
+    console.log('Updating player roles for', players.length, 'players');
+
+    for (const player of players) {
+      const role = player.id === imposterPlayerId ? 'imposter' : 'crewmate';
+      const { error: updateError } = await supabase
+        .from('game_players')
+        .update({ role })
+        .eq('id', player.id);
+
+      if (updateError) {
+        console.error(`Error updating player ${player.id}:`, updateError.message);
+        return NextResponse.json(
+          { error: `Failed to assign role: ${updateError.message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    console.log('Roles assigned successfully');
 
     // Update game status
     const { error: gameError } = await supabase
@@ -123,23 +129,27 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', gameId);
 
-    console.log('Game update result:', { gameError });
+    console.log('Game update result:', { gameError: gameError?.message });
 
     if (gameError) {
+      console.error('Game update error:', gameError);
       return NextResponse.json(
         { error: `Failed to update game status: ${gameError.message}` },
         { status: 500 }
       );
     }
 
+    console.log('Game started successfully, returning:', { roundId: round.id, keyword });
+
     return NextResponse.json({
       success: true,
       roundId: round.id,
+      keyword,
       message: 'Game started, roles assigned',
     });
   } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Start game error:', errorMsg);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('Start game exception:', errorMsg, err);
     return NextResponse.json(
       { error: `Server error: ${errorMsg}` },
       { status: 500 }
