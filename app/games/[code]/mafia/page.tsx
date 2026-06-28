@@ -43,6 +43,8 @@ export default function MafiaGamePage() {
   const [isJoined, setIsJoined] = useState(false);
   const [gameUrl, setGameUrl] = useState('');
   const [starting, setStarting] = useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [gameHostId, setGameHostId] = useState<string | null>(null);
   const { players, loading } = useGamePlayers(code);
 
   useEffect(() => {
@@ -59,10 +61,23 @@ export default function MafiaGamePage() {
           .eq('id', session.user.id)
           .single();
         setCurrentUser(userData);
+
+        // Fetch game host_id
+        const { data: gameData } = await supabase
+          .from('games')
+          .select('host_id')
+          .eq('invite_code', code.toUpperCase())
+          .single();
+
+        if (gameData) {
+          setGameHostId(gameData.host_id);
+          setIsHost(gameData.host_id === userData.id);
+          console.log('Host check:', { currentUserId: userData.id, hostId: gameData.host_id, isHost: gameData.host_id === userData.id });
+        }
       }
     };
     checkAuth();
-  }, []);
+  }, [code]);
 
   const handleJoinGame = async () => {
     if (!currentUser) return;
@@ -331,21 +346,38 @@ export default function MafiaGamePage() {
               justifyContent: 'center',
               flexWrap: 'wrap',
             }}>
-              <button onClick={handleStartGame} disabled={starting} style={{
-                backgroundColor: starting ? '#666666' : designTokens.colors.primary,
-                color: '#000000',
-                padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
-                borderRadius: '6px',
-                border: 'none',
-                fontWeight: 'bold',
-                fontSize: '1rem',
-                cursor: starting ? 'not-allowed' : 'pointer',
-                transition: 'all 150ms ease',
-                fontFamily: designTokens.fonts.body,
-                opacity: starting ? 0.7 : 1,
-              }} onMouseEnter={(e) => !starting && (e.target.style.backgroundColor = designTokens.colors.primaryHover)} onMouseLeave={(e) => !starting && (e.target.style.backgroundColor = designTokens.colors.primary)}>
-                {starting ? 'Starting...' : 'Start Game'}
-              </button>
+              {/* Only show Start Game button if user is host */}
+              {isHost ? (
+                <button onClick={handleStartGame} disabled={starting} style={{
+                  backgroundColor: starting ? '#666666' : designTokens.colors.primary,
+                  color: '#000000',
+                  padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                  cursor: starting ? 'not-allowed' : 'pointer',
+                  transition: 'all 150ms ease',
+                  fontFamily: designTokens.fonts.body,
+                  opacity: starting ? 0.7 : 1,
+                }} onMouseEnter={(e) => !starting && (e.target.style.backgroundColor = designTokens.colors.primaryHover)} onMouseLeave={(e) => !starting && (e.target.style.backgroundColor = designTokens.colors.primary)}>
+                  {starting ? 'Starting...' : 'Start Game'}
+                </button>
+              ) : (
+                <div style={{
+                  padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
+                  backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                  border: `1px solid ${designTokens.colors.primary}`,
+                  borderRadius: '6px',
+                  color: designTokens.colors.primary,
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                  textAlign: 'center',
+                  minWidth: '150px',
+                }}>
+                  Waiting for Host...
+                </div>
+              )}
 
               <button onClick={handleCopyLink} style={{
                 backgroundColor: copied ? designTokens.colors.primary : 'transparent',
