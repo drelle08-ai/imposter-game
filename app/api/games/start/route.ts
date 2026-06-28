@@ -47,11 +47,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get all players in the game
+    // Get all players - order by joined_at to get latest records first
     let { data: allPlayers, error: playersError } = await supabase
       .from('game_players')
-      .select('id, user_id')
-      .eq('game_id', gameId);
+      .select('id, user_id, joined_at')
+      .eq('game_id', gameId)
+      .order('joined_at', { ascending: false });
 
     console.log('All players query result:', { playersCount: allPlayers?.length, playersError });
 
@@ -63,28 +64,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Remove duplicate player records (keep only first record per user)
-    const seenUsers = new Set<string>();
-    const players = allPlayers.filter((p) => {
-      if (seenUsers.has(p.user_id)) {
-        return false; // Skip duplicates
+    // Deduplicate: keep only the LATEST record per user
+    const seenUsers = new Map<string, string>(); // user_id -> record id to keep
+    const players = [];
+    const recordsToDelete = [];
+
+    for (const player of allPlayers) {
+      if (seenUsers.has(player.user_id)) {
+        // Already have a record for this user, delete this old one
+        recordsToDelete.push(player.id);
+        console.log('Marking duplicate for deletion:', { userId: player.user_id, recordId: player.id });
+      } else {
+        // First record for this user, keep it
+        seenUsers.set(player.user_id, player.id);
+        players.push(player);
+        console.log('Keeping record for user:', { userId: player.user_id, recordId: player.id });
       }
-      seenUsers.add(p.user_id);
-      return true;
+    }
+
+    console.log('Deduplication result:', {
+      totalRecords: allPlayers.length,
+      uniquePlayers: players.length,
+      recordsToDelete: recordsToDelete.length,
     });
 
-    console.log('After deduplication:', { originalCount: allPlayers.length, uniqueCount: players.length });
-
-    if (players.length < allPlayers.length) {
-      // Delete duplicate records
-      const duplicateIds = allPlayers
-        .filter((p) => !players.find((up) => up.id === p.id))
-        .map((p) => p.id);
-      console.log('Deleting duplicate records:', duplicateIds);
-
-      for (const id of duplicateIds) {
+    // Delete old duplicate records
+    if (recordsToDelete.length > 0) {
+      for (const id of recordsToDelete) {
         await supabase.from('game_players').delete().eq('id', id);
       }
+      console.log('Deleted duplicate records:', recordsToDelete);
     }
 
     // Randomly select one player as imposter
