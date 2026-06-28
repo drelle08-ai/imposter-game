@@ -39,8 +39,12 @@ export const useGamePlayers = (gameCode: string) => {
           .eq('game_id', gameData.id)
           .order('joined_at', { ascending: true });
 
+        console.log('Initial players load:', { count: initialPlayers?.length, players: initialPlayers, error: playersError });
+
         if (!playersError) {
           setPlayers(initialPlayers || []);
+        } else {
+          console.error('Error loading players:', playersError);
         }
         setLoading(false);
 
