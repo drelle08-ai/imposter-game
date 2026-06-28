@@ -48,19 +48,43 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all players in the game
-    const { data: players, error: playersError } = await supabase
+    let { data: allPlayers, error: playersError } = await supabase
       .from('game_players')
       .select('id, user_id')
       .eq('game_id', gameId);
 
-    console.log('Players query result:', { playersCount: players?.length, playersError });
+    console.log('All players query result:', { playersCount: allPlayers?.length, playersError });
 
-    if (playersError || !players || players.length === 0) {
+    if (playersError || !allPlayers || allPlayers.length === 0) {
       console.error('Players error:', playersError?.message);
       return NextResponse.json(
         { error: `No players found: ${playersError?.message || 'empty list'}` },
         { status: 400 }
       );
+    }
+
+    // Remove duplicate player records (keep only first record per user)
+    const seenUsers = new Set<string>();
+    const players = allPlayers.filter((p) => {
+      if (seenUsers.has(p.user_id)) {
+        return false; // Skip duplicates
+      }
+      seenUsers.add(p.user_id);
+      return true;
+    });
+
+    console.log('After deduplication:', { originalCount: allPlayers.length, uniqueCount: players.length });
+
+    if (players.length < allPlayers.length) {
+      // Delete duplicate records
+      const duplicateIds = allPlayers
+        .filter((p) => !players.find((up) => up.id === p.id))
+        .map((p) => p.id);
+      console.log('Deleting duplicate records:', duplicateIds);
+
+      for (const id of duplicateIds) {
+        await supabase.from('game_players').delete().eq('id', id);
+      }
     }
 
     // Randomly select one player as imposter
