@@ -1,374 +1,248 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 
-interface GameData {
-  id: string;
-  invite_code: string;
-  status: string;
-  host_id: string;
-  game_type: string;
-  max_rounds: number;
-  current_round: number;
-}
+const designTokens = {
+  colors: {
+    primary: '#d4af37',
+    primaryHover: '#f0d966',
+    background: '#000000',
+    surface: '#1a1a1a',
+    surfaceLight: '#2a2a2a',
+    text: '#ffffff',
+    textSecondary: '#b8860b',
+    textMuted: '#666666',
+    border: '#d4af37',
+  },
+  fonts: {
+    heading: "'Playfair Display', serif",
+    body: "'Crimson Text', serif",
+  },
+  spacing: {
+    xs: '0.5rem',
+    sm: '1rem',
+    md: '1.5rem',
+    lg: '2rem',
+    xl: '3rem',
+  },
+};
 
-interface Player {
-  id: string;
-  user_id: string;
-  role: string;
-  is_alive: boolean;
-  joined_at: string;
-  users?: {
-    username: string;
-  };
-  guest_name?: string;
-}
-
-interface CurrentUser {
-  id: string;
-  username: string;
-}
-
-export default function MafiaLobbyPage() {
-  const router = useRouter();
+export default function MafiaGamePage() {
   const params = useParams();
   const code = params.code as string;
-
-  const [game, setGame] = useState<GameData | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isHost, setIsHost] = useState(false);
-  const [isJoined, setIsJoined] = useState(false);
-  const [error, setError] = useState('');
-  const [maxRounds, setMaxRounds] = useState(5);
   const [copied, setCopied] = useState(false);
-  const [showQR, setShowQR] = useState(false);
+  const gameUrl = typeof window !== 'undefined' ? `${window.location.origin}/games/${code}/mafia` : '';
 
-  useEffect(() => {
-    const loadGame = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push('/auth/login');
-        return;
-      }
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      setCurrentUser(userData);
-
-      const { data: gameData, error: gameError } = await supabase
-        .from('games')
-        .select('*')
-        .eq('invite_code', code.toUpperCase())
-        .single();
-
-      if (gameError || !gameData) {
-        setError('Game not found');
-        setLoading(false);
-        return;
-      }
-
-      setGame(gameData);
-      setMaxRounds(gameData.max_rounds || 5);
-      setIsHost(gameData.host_id === session.user.id);
-
-      const { data: playersData } = await supabase
-        .from('game_players')
-        .select(`id, user_id, role, is_alive, joined_at, guest_name, users(username)`)
-        .eq('game_id', gameData.id);
-
-      setPlayers((playersData as any) || []);
-
-      const isAlreadyJoined = (playersData as any)?.some((p: any) => p.user_id === session.user.id);
-      setIsJoined(!!isAlreadyJoined);
-
-      setLoading(false);
-    };
-
-    loadGame();
-
-    const subscription = supabase
-      .channel(`game:${code}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'game_players' },
-        () => {
-          loadGame();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [code, router]);
-
-  const handleJoinGame = async () => {
-    if (!game || !currentUser) return;
-
-    const { error } = await supabase.from('game_players').insert({
-      game_id: game.id,
-      user_id: currentUser.id,
-      role: 'unassigned',
-      is_alive: true,
-    });
-
-    if (error) {
-      setError('Failed to join game: ' + error.message);
-      return;
-    }
-
-    setIsJoined(true);
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(gameUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleStartGame = async () => {
-    if (!game) return;
-
-    try {
-      const res = await fetch('/api/games/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: game.id, maxRounds, gameType: 'mafia' }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError('Failed to start game: ' + (data.error || 'Unknown error'));
-        return;
-      }
-
-      const { error } = await supabase
-        .from('games')
-        .update({ status: 'in_progress', started_at: new Date().toISOString() })
-        .eq('id', game.id);
-
-      if (error) {
-        setError('Failed to update game: ' + error.message);
-        return;
-      }
-
-      router.push(`/games/${game.invite_code}/mafia-play`);
-    } catch (err) {
-      setError('Error starting game: ' + String(err));
-    }
-  };
-
-  const copyInviteLink = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/games/${game?.invite_code}`
-      );
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-[#d4af37] text-2xl" style={{fontFamily: 'Playfair Display', letterSpacing: '0.1em'}}>Loading...</div>
-      </div>
-    );
-  }
-
-  if (error || !game) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8 max-w-md text-center">
-          <h2 className="text-3xl font-bold text-[#d4af37] mb-4" style={{fontFamily: 'Playfair Display'}}>⚠️</h2>
-          <p className="text-[#888] mb-6" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>{error || 'Operation not found'}</p>
-          <Link
-            href="/dashboard"
-            className="inline-block bg-[#d4af37] hover:bg-[#f0d966] text-black font-bold py-2 px-6 rounded transition"
-          >
+  return (
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: designTokens.colors.background,
+      color: designTokens.colors.text,
+      fontFamily: designTokens.fonts.body,
+      width: '100%',
+    }}>
+      {/* Header */}
+      <header style={{
+        borderBottom: `1px solid ${designTokens.colors.border}`,
+        padding: `${designTokens.spacing.sm} ${designTokens.spacing.md}`,
+        backgroundColor: 'rgba(0, 0, 0, 0.95)',
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <div style={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            color: designTokens.colors.primary,
+            fontFamily: designTokens.fonts.heading,
+          }}>
+            🎭 MAFIA
+          </div>
+          <Link href="/dashboard" style={{
+            color: designTokens.colors.primary,
+            textDecoration: 'none',
+            padding: `${designTokens.spacing.xs} ${designTokens.spacing.md}`,
+            border: `1px solid ${designTokens.colors.primary}`,
+            borderRadius: '6px',
+            transition: 'all 150ms ease',
+            cursor: 'pointer',
+          }} onMouseEnter={(e) => {
+            e.target.style.backgroundColor = designTokens.colors.primary;
+            e.target.style.color = '#000000';
+          }} onMouseLeave={(e) => {
+            e.target.style.backgroundColor = 'transparent';
+            e.target.style.color = designTokens.colors.primary;
+          }}>
             Back to Dashboard
           </Link>
         </div>
-      </div>
-    );
-  }
+      </header>
 
-  return (
-    <div className="min-h-screen bg-black p-4">
-      <style>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
+      {/* Main Content */}
+      <main style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: designTokens.spacing.lg,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 'calc(100vh - 120px)',
+      }}>
+        <div style={{
+          textAlign: 'center',
+          background: `linear-gradient(135deg, ${designTokens.colors.surfaceLight}, ${designTokens.colors.surface})`,
+          border: `2px solid ${designTokens.colors.primary}`,
+          borderRadius: '12px',
+          padding: designTokens.spacing.xl,
+          maxWidth: '600px',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9)',
+        }}>
+          <div style={{ fontSize: '4rem', marginBottom: designTokens.spacing.md }}>
+            🎭
+          </div>
 
-        @keyframes shimmer {
-          0% { text-shadow: 0 0 10px #d4af37; }
-          50% { text-shadow: 0 0 20px #d4af37, 0 0 30px #b8860b; }
-          100% { text-shadow: 0 0 10px #d4af37; }
-        }
-
-        .lobby-card {
-          animation: slideIn 0.6s ease-out;
-        }
-
-        .gold-shimmer {
-          animation: shimmer 3s ease-in-out infinite;
-        }
-
-        input:focus {
-          box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
-        }
-      `}</style>
-
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-12 pb-6 border-b-2 border-[#d4af37]">
-          <Link href="/dashboard" className="text-[#d4af37] hover:text-[#f0d966] transition font-semibold text-lg">
-            ← Exit
-          </Link>
-          <h1 className="text-4xl font-bold text-[#d4af37] text-center gold-shimmer" style={{fontFamily: 'Playfair Display', letterSpacing: '0.15em'}}>
-            🎭 THE FAMILY
+          <h1 style={{
+            fontSize: '2.5rem',
+            fontFamily: designTokens.fonts.heading,
+            color: designTokens.colors.primary,
+            margin: 0,
+            marginBottom: designTokens.spacing.md,
+            letterSpacing: '0.05em',
+          }}>
+            Mafia Lobby
           </h1>
-          <div className="w-12"></div>
-        </div>
 
-        {/* Game Code & QR Card */}
-        <div className="lobby-card bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8 mb-6">
-          <div className="text-center mb-8">
-            <p className="text-[#b8860b] mb-2 text-sm tracking-widest" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>FACTION CODE</p>
-            <h2 className="text-6xl font-bold text-[#d4af37] tracking-wider" style={{fontFamily: 'Playfair Display', letterSpacing: '0.2em'}}>
-              {game.invite_code}
-            </h2>
-          </div>
-
-          {/* QR Code Section */}
-          <div className="flex flex-col items-center mb-8">
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="mb-4 text-[#d4af37] hover:text-[#f0d966] transition font-semibold"
-              style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}
-            >
-              {showQR ? '← Hide QR Code' : 'Show QR Code →'}
-            </button>
-            {showQR && (
-              <div className="bg-white p-4 rounded-lg mb-6">
-                <QRCodeSVG
-                  value={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/games/${game?.invite_code}`}
-                  size={256}
-                  level="H"
-                  includeMargin={true}
-                />
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={copyInviteLink}
-            className="w-full bg-[#d4af37] hover:bg-[#f0d966] text-black font-bold py-3 rounded transition transform hover:scale-105 mb-4"
-            style={{fontFamily: 'Crimson Text', fontSize: '1.1em', letterSpacing: '0.05em'}}
-          >
-            {copied ? '✓ Link Copied' : 'Copy Invite Link'}
-          </button>
-
-          {!isJoined && (
-            <button
-              onClick={handleJoinGame}
-              className="w-full bg-gradient-to-r from-[#d4af37] to-[#f0d966] hover:from-[#f0d966] hover:to-[#d4af37] text-black font-bold py-3 rounded transition transform hover:scale-105"
-              style={{fontFamily: 'Crimson Text', fontSize: '1.1em', letterSpacing: '0.05em'}}
-            >
-              Join Family
-            </button>
-          )}
-        </div>
-
-        {error && (
-          <div className="lobby-card bg-red-900 border-2 border-red-600 rounded-lg p-4 mb-6">
-            <p className="text-red-200 text-center" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>{error}</p>
-          </div>
-        )}
-
-        {/* Players Card */}
-        <div className="lobby-card bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8 mb-6">
-          <h3 className="text-2xl font-bold text-[#d4af37] mb-6" style={{fontFamily: 'Playfair Display'}}>
-            Soldiers ({players.length})
-          </h3>
-          <div className="space-y-3">
-            {players.length === 0 ? (
-              <p className="text-[#666] text-center py-8" style={{fontFamily: 'Crimson Text', fontSize: '1.1em', fontStyle: 'italic'}}>Awaiting recruits...</p>
-            ) : (
-              players.map((player, idx) => (
-                <div
-                  key={player.id}
-                  className="flex items-center justify-between p-3 border border-[#d4af37] rounded hover:bg-[#3a3a3a] transition"
-                  style={{animation: `slideIn 0.6s ease-out ${idx * 0.1}s both`}}
-                >
-                  <span className="text-[#d4af37] font-semibold" style={{fontFamily: 'Crimson Text', fontSize: '1.1em'}}>
-                    {player.guest_name || player.users?.username}
-                    {currentUser?.id === player.user_id && <span className="ml-2 text-[#b8860b]">(You)</span>}
-                    {game.host_id === player.user_id && (
-                      <span className="ml-2 bg-[#d4af37] text-black text-xs px-2 py-1 rounded font-bold">Boss</span>
-                    )}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Host Controls */}
-        {isHost && isJoined && (
-          <div className="lobby-card bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#d4af37] rounded-lg shadow-2xl p-8">
-            <div className="mb-8">
-              <label className="text-[#d4af37] font-bold mb-4 block" style={{fontFamily: 'Playfair Display', fontSize: '1.3em', letterSpacing: '0.05em'}}>
-                Nights: <span className="text-[#f0d966] text-2xl">{maxRounds}</span>
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={maxRounds}
-                onChange={(e) => setMaxRounds(parseInt(e.target.value))}
-                className="w-full h-3 bg-[#3a3a3a] border border-[#d4af37] rounded-lg appearance-none cursor-pointer"
-                style={{accentColor: '#d4af37'}}
-              />
-              <div className="flex justify-between text-xs text-[#666] mt-3">
-                <span>1 Night</span>
-                <span>10 Nights</span>
-              </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: designTokens.spacing.lg,
+            marginBottom: designTokens.spacing.lg,
+            alignItems: 'center',
+          }}>
+            {/* Game Code */}
+            <div style={{
+              background: designTokens.colors.background,
+              border: `2px solid ${designTokens.colors.primary}`,
+              borderRadius: '8px',
+              padding: designTokens.spacing.lg,
+            }}>
+              <p style={{
+                fontSize: '1rem',
+                color: designTokens.colors.primary,
+                margin: 0,
+                marginBottom: designTokens.spacing.sm,
+                fontWeight: 'bold',
+              }}>
+                Game Code
+              </p>
+              <p style={{
+                fontSize: '1.8rem',
+                color: designTokens.colors.primaryHover,
+                margin: 0,
+                fontFamily: 'monospace',
+                letterSpacing: '0.2em',
+                fontWeight: 'bold',
+              }}>
+                {code}
+              </p>
             </div>
 
-            <button
-              onClick={handleStartGame}
-              disabled={players.length < 4}
-              className={`w-full font-bold py-4 rounded transition transform text-lg ${
-                players.length < 4
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : 'bg-[#d4af37] hover:bg-[#f0d966] text-black hover:scale-105'
-              }`}
-              style={{fontFamily: 'Crimson Text', fontSize: '1.2em', letterSpacing: '0.05em'}}
-            >
-              {players.length < 4
-                ? `Begin War (Need ${4 - players.length} more)`
-                : 'BEGIN THE WAR'}
+            {/* QR Code */}
+            <div style={{
+              background: designTokens.colors.background,
+              border: `2px solid ${designTokens.colors.primary}`,
+              borderRadius: '8px',
+              padding: designTokens.spacing.md,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+              <QRCodeSVG
+                value={gameUrl}
+                size={150}
+                bgColor="#000000"
+                fgColor="#d4af37"
+                level="H"
+              />
+            </div>
+          </div>
+
+          <p style={{
+            color: designTokens.colors.textMuted,
+            fontSize: '1.1rem',
+            lineHeight: '1.6',
+            marginBottom: designTokens.spacing.lg,
+          }}>
+            Game is ready! Players can join using the code above.
+          </p>
+
+          <div style={{
+            display: 'flex',
+            gap: designTokens.spacing.md,
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+          }}>
+            <button style={{
+              backgroundColor: designTokens.colors.primary,
+              color: '#000000',
+              padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
+              borderRadius: '6px',
+              border: 'none',
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'all 150ms ease',
+              fontFamily: designTokens.fonts.body,
+            }} onMouseEnter={(e) => {
+              e.target.style.backgroundColor = designTokens.colors.primaryHover;
+              e.target.style.transform = 'scale(1.05)';
+            }} onMouseLeave={(e) => {
+              e.target.style.backgroundColor = designTokens.colors.primary;
+              e.target.style.transform = 'scale(1)';
+            }}>
+              Start Game
+            </button>
+
+            <button onClick={handleCopyLink} style={{
+              backgroundColor: copied ? designTokens.colors.primary : 'transparent',
+              color: copied ? '#000000' : designTokens.colors.primary,
+              padding: `${designTokens.spacing.md} ${designTokens.spacing.lg}`,
+              borderRadius: '6px',
+              border: `2px solid ${designTokens.colors.primary}`,
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'all 150ms ease',
+              fontFamily: designTokens.fonts.body,
+            }} onMouseEnter={(e) => !copied && (e.target.style.backgroundColor = designTokens.colors.primary)} onMouseLeave={(e) => !copied && (e.target.style.backgroundColor = 'transparent')}>
+              {copied ? '✓ Copied!' : 'Copy Link'}
             </button>
           </div>
-        )}
-      </div>
+
+          <p style={{
+            color: designTokens.colors.textMuted,
+            fontSize: '0.9rem',
+            marginTop: designTokens.spacing.lg,
+            margin: 0,
+          }}>
+            Waiting for players to join...
+          </p>
+        </div>
+      </main>
     </div>
   );
 }
