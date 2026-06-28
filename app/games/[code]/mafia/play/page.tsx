@@ -113,15 +113,30 @@ export default function MafiaPlayPage() {
     if (!gameState || !currentUser) return;
 
     const loadPlayerRole = async () => {
-      const { data: player } = await supabase
-        .from('game_players')
-        .select('id, role, user_id')
-        .eq('game_id', gameState.id)
-        .eq('user_id', currentUser.id)
-        .single();
+      try {
+        console.log('Loading player role:', { gameId: gameState.id, userId: currentUser.id });
 
-      if (player) {
-        setPlayerRole(player);
+        const { data: player, error } = await supabase
+          .from('game_players')
+          .select('*')
+          .eq('game_id', gameState.id)
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+
+        console.log('Player role query result:', { player, error, status: error?.code });
+
+        if (error) {
+          console.error('Player role error details:', error);
+        }
+
+        if (player) {
+          console.log('Setting player role:', { id: player.id, role: player.role });
+          setPlayerRole(player);
+        } else {
+          console.warn('No player found for this user in this game');
+        }
+      } catch (err) {
+        console.error('Exception loading player role:', err);
       }
     };
 
