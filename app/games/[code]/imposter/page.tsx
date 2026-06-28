@@ -129,7 +129,8 @@ export default function ImposterGamePage() {
         router.push(`/games/${code}/imposter/play`);
       } else {
         setStarting(false);
-        console.error('Failed to start game');
+        const error = await response.json();
+        console.error('Failed to start game:', error);
       }
     } catch (err) {
       setStarting(false);

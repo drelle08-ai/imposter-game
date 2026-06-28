@@ -129,7 +129,8 @@ export default function MafiaGamePage() {
         router.push(`/games/${code}/mafia/play`);
       } else {
         setStarting(false);
-        console.error('Failed to start game');
+        const error = await response.json();
+        console.error('Failed to start game:', error);
       }
     } catch (err) {
       setStarting(false);
