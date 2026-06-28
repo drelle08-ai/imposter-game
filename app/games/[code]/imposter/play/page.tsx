@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useGamePlayers } from '@/lib/useGamePlayers';
 import { useGameVotes } from '@/lib/useGameVotes';
-import PlayerList from '@/app/components/PlayerList';
+import RoleReveal from '@/app/components/RoleReveal';
 import DiscussionPhase from '@/app/components/DiscussionPhase';
 import VotingPhase from '@/app/components/VotingPhase';
 
@@ -27,21 +27,26 @@ const designTokens = {
   },
 };
 
-type GamePhase = 'discussion' | 'voting' | 'ended';
+type GamePhase = 'role_reveal' | 'discussion' | 'voting' | 'ended';
 
 interface GameState {
   id: string;
   status: string;
   current_round: number;
   max_rounds: number;
-  phase: GamePhase;
-  phase_start_time: string;
 }
 
 interface RoundState {
   id: string;
   round_number: number;
   phase: GamePhase;
+  keyword: string;
+}
+
+interface PlayerRole {
+  id: string;
+  role: 'imposter' | 'crewmate';
+  user_id: string;
 }
 
 export default function ImposterPlayPage() {
@@ -50,9 +55,11 @@ export default function ImposterPlayPage() {
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roundState, setRoundState] = useState<RoundState | null>(null);
-  const [currentPhase, setCurrentPhase] = useState<GamePhase>('discussion');
+  const [playerRole, setPlayerRole] = useState<PlayerRole | null>(null);
+  const [currentPhase, setCurrentPhase] = useState<GamePhase>('role_reveal');
   const [timeLeft, setTimeLeft] = useState(30);
   const [hasVoted, setHasVoted] = useState(false);
+  const [hasSeenRole, setHasSeenRole] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -90,7 +97,7 @@ export default function ImposterPlayPage() {
 
         if (round) {
           setRoundState(round);
-          setCurrentPhase(round.phase || 'discussion');
+          setCurrentPhase(round.phase || 'role_reveal');
         }
       }
 
@@ -99,6 +106,26 @@ export default function ImposterPlayPage() {
 
     loadGame();
   }, [code]);
+
+  // Load player's role
+  useEffect(() => {
+    if (!gameState || !currentUser) return;
+
+    const loadPlayerRole = async () => {
+      const { data: player } = await supabase
+        .from('game_players')
+        .select('id, role, user_id')
+        .eq('game_id', gameState.id)
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (player) {
+        setPlayerRole(player);
+      }
+    };
+
+    loadPlayerRole();
+  }, [gameState?.id, currentUser?.id]);
 
   // Subscribe to round phase changes
   useEffect(() => {
@@ -126,19 +153,19 @@ export default function ImposterPlayPage() {
     };
   }, [roundState?.id]);
 
-  // Timer countdown
+  // Timer countdown (only for discussion/voting phases)
   useEffect(() => {
-    const phaseLength = currentPhase === 'discussion' ? 30 : 20; // 30s discussion, 20s voting
+    if (currentPhase === 'role_reveal') return;
+
+    const phaseLength = currentPhase === 'discussion' ? 30 : 20;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          // Transition to next phase
           if (currentPhase === 'discussion') {
             setCurrentPhase('voting');
             return 20;
           } else {
-            // Voting ends - in real app, would tally and move to next round
             setCurrentPhase('discussion');
             return 30;
           }
@@ -149,6 +176,21 @@ export default function ImposterPlayPage() {
 
     return () => clearInterval(interval);
   }, [currentPhase]);
+
+  const handleRoleRevealContinue = () => {
+    setHasSeenRole(true);
+    // Transition to discussion phase
+    if (roundState) {
+      supabase
+        .from('game_rounds')
+        .update({ phase: 'discussion' })
+        .eq('id', roundState.id)
+        .then(() => {
+          setCurrentPhase('discussion');
+          setTimeLeft(30);
+        });
+    }
+  };
 
   const handleVote = async (playerId: string) => {
     if (!gameState || !roundState || !currentUser) return;
@@ -186,6 +228,20 @@ export default function ImposterPlayPage() {
     );
   }
 
+  // Show role reveal phase
+  if (currentPhase === 'role_reveal' && playerRole && !hasSeenRole) {
+    return (
+      <RoleReveal
+        role={playerRole.role}
+        keyword={roundState?.keyword}
+        onContinue={handleRoleRevealContinue}
+        playerCount={players.length}
+        roundNumber={gameState?.current_round || 1}
+      />
+    );
+  }
+
+  // Show gameplay phases
   return (
     <div style={{
       minHeight: '100vh',
@@ -219,7 +275,11 @@ export default function ImposterPlayPage() {
             color: designTokens.colors.textMuted,
             fontSize: '0.9rem',
           }}>
-            Players: {players.length}
+            {playerRole && (
+              <span>
+                {playerRole.role === 'imposter' ? '🕵️ Imposter' : '👥 Crewmate'} • Players: {players.length}
+              </span>
+            )}
           </div>
         </div>
 

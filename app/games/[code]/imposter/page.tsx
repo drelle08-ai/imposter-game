@@ -101,9 +101,40 @@ export default function ImposterGamePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
+    if (!currentUser) return;
     setStarting(true);
-    router.push(`/games/${code}/imposter/play`);
+
+    try {
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('id')
+        .eq('invite_code', code.toUpperCase())
+        .single();
+
+      if (!gameData) return;
+
+      // Call start game API to assign roles
+      const response = await fetch('/api/games/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: gameData.id,
+          userId: currentUser.id,
+        }),
+      });
+
+      if (response.ok) {
+        // Navigate to gameplay
+        router.push(`/games/${code}/imposter/play`);
+      } else {
+        setStarting(false);
+        console.error('Failed to start game');
+      }
+    } catch (err) {
+      setStarting(false);
+      console.error('Error starting game:', err);
+    }
   };
 
   return (
